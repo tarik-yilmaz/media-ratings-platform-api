@@ -1,6 +1,6 @@
 # Project Protocol
 This protocol is for the semester project for the Java course 'SWEN1' (Software Engineering 1) 
-at the University of Applied Sciences FH Technikum Vienna.
+for the winter semester 2025 at the University of Applied Sciences FH Technikum Vienna.
 
 ## 1) Description of technical steps and architecture
 
