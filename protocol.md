@@ -17,6 +17,13 @@ Following steps were taken to setup the project:
 8. Unit tests
 9. Postman-/curl-Collection
 
+### Steps done:
+
+20251210: 
+- Setup Repository, cloned it, created project in IntelliJ IDEA and added Maven.
+- Added README.md and protocol.md.
+- Downloaded and installed Docker Desktop and pulled postgres image.
+
 ## 2) Explanation of unit test coverage and why specific logic was tested
 
 ## 3) Notes on problems encountered and how they were solved
