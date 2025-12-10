@@ -5,9 +5,10 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>at.ac.technikum.mrp</groupId>
+    <groupId>at.ac.technikum.mrps</groupId>
     <artifactId>FH_WS2025-java-project</artifactId>
     <version>0.0.1-SNAPSHOT</version>
+    <packaging>jar</packaging>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
