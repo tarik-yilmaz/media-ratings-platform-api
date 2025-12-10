@@ -1,4 +1,4 @@
-package at.ac.technikum.mrp;
+package mrp;
 
 public class Main {
     public  static void main(String[] args) {

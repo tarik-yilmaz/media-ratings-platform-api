@@ -48,7 +48,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>at.ac.technikum.mrp.Main</mainClass>
+                            <mainClass>mrp.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
