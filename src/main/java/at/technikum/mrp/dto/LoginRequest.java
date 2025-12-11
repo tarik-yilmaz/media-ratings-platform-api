@@ -4,7 +4,7 @@ public class LoginRequest {
     private String username;
     private String password;
 
-    // Default constructor for JSON deserialization
+    // Standard-Konstruktor für JSON
     public LoginRequest() {}
 
     public LoginRequest(String username, String password) {
@@ -12,7 +12,7 @@ public class LoginRequest {
         this.password = password;
     }
 
-    // Getter und Setter
+    // Getter/Setter (für JSON Serialisierung)
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
 
