@@ -12,22 +12,21 @@ public class DatabaseConfig {
     private static final Properties properties = new Properties();
 
     static {
-        // Konfiguration beim Start laden
         try (InputStream input = DatabaseConfig.class.getClassLoader()
                 .getResourceAsStream("application.properties")) {
 
             if (input == null) {
                 System.err.println("Fehler: application.properties nicht gefunden!");
-                return;
+            } else {
+                properties.load(input);
+                System.out.println("✓ Datenbank-Konfiguration geladen");
             }
-
-            properties.load(input);
-            System.out.println("✓ Datenbank-Konfiguration geladen");
 
         } catch (Exception e) {
             System.err.println("Fehler beim Laden der Konfiguration: " + e.getMessage());
         }
     }
+
 
     //Gibt eine neue Datenbank-Verbindung zurück
     public static Connection getConnection() throws SQLException {
