@@ -8,7 +8,8 @@ public class Rating {
     private Integer userId;
     private Integer stars;  // 1-5
     private String comment;
-    private Boolean confirmed = false;  // Kommentar-Bestätigung
+    private Boolean confirmed = false;
+    private Integer likesCount = 0;
     private LocalDateTime createdAt;
 
     private Rating(Builder builder) {
@@ -18,6 +19,7 @@ public class Rating {
         this.stars = builder.stars;
         this.comment = builder.comment;
         this.confirmed = builder.confirmed;
+        this.likesCount = builder.likesCount;
         this.createdAt = builder.createdAt;
     }
 
@@ -28,6 +30,7 @@ public class Rating {
     public Integer getStars() { return stars; }
     public String getComment() { return comment; }
     public Boolean getConfirmed() { return confirmed; }
+    public Integer getLikesCount() { return likesCount; }
     public LocalDateTime getCreatedAt() { return createdAt; }
 
     public static class Builder {
@@ -37,6 +40,7 @@ public class Rating {
         private Integer stars;
         private String comment;
         private Boolean confirmed = false;
+        private Integer likesCount = 0;
         private LocalDateTime createdAt = LocalDateTime.now();
 
         public Builder id(Integer id) { this.id = id; return this; }
@@ -45,6 +49,7 @@ public class Rating {
         public Builder stars(Integer stars) { this.stars = stars; return this; }
         public Builder comment(String comment) { this.comment = comment; return this; }
         public Builder confirmed(Boolean confirmed) { this.confirmed = confirmed; return this; }
+        public Builder likesCount(Integer likesCount) { this.likesCount = likesCount; return this; }
         public Builder createdAt(LocalDateTime time) { this.createdAt = time; return this; }
 
         public Rating build() {
@@ -53,6 +58,8 @@ public class Rating {
             if (stars == null || stars < 1 || stars > 5) {
                 throw new IllegalArgumentException("Sterne müssen zwischen 1 und 5 sein");
             }
+            if (likesCount == null) likesCount = 0;
+            if (confirmed == null) confirmed = false;
             return new Rating(this);
         }
     }
