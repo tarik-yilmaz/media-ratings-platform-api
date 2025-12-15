@@ -31,7 +31,7 @@ CREATE TABLE ratings (
                          user_id INT REFERENCES users(id) ON DELETE CASCADE,
                          stars INT CHECK (stars BETWEEN 1 AND 5),
                          comment TEXT,
-                         comment_confirmed BOOLEAN DEFAULT FALSE,
+                         confirmed BOOLEAN DEFAULT FALSE,
                          likes_count INT DEFAULT 0,
                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
