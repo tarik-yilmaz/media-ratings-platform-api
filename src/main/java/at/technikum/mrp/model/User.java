@@ -6,6 +6,7 @@ public class User {
     private Integer id;
     private String username;
     private String passwordHash;
+    private String email;
     private LocalDateTime createdAt;
     private Integer totalRatings = 0;
     private Double averageRating = 0.0;
@@ -14,6 +15,7 @@ public class User {
         this.id = builder.id;
         this.username = builder.username;
         this.passwordHash = builder.passwordHash;
+        this.email = builder.email;
         this.createdAt = builder.createdAt;
         this.totalRatings = builder.totalRatings;
         this.averageRating = builder.averageRating;
@@ -23,6 +25,7 @@ public class User {
     public Integer getId() { return id; }
     public String getUsername() { return username; }
     public String getPasswordHash() { return passwordHash; }
+    public String getEmail() { return email; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public Integer getTotalRatings() { return totalRatings; }
     public Double getAverageRating() { return averageRating; }
@@ -31,6 +34,7 @@ public class User {
         private Integer id;
         private String username;
         private String passwordHash;
+        private String email;
         private LocalDateTime createdAt = LocalDateTime.now();
         private Integer totalRatings = 0;
         private Double averageRating = 0.0;
@@ -47,6 +51,11 @@ public class User {
 
         public Builder passwordHash(String passwordHash) {
             this.passwordHash = passwordHash;
+            return this;
+        }
+
+        public Builder email(String email) {
+            this.email = email;
             return this;
         }
 
