@@ -5,7 +5,7 @@ import java.util.List;
 public class MediaRequest {
     private String title;
     private String description;
-    private String mediaType;  // "MOVIE", "SERIES", "GAME" als String
+    private String mediaType;  // "MOVIE", "SERIES", "GAME"
     private Integer releaseYear;
     private List<String> genres;
     private Integer ageRestriction;
