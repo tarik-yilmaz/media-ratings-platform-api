@@ -2,17 +2,16 @@ package at.technikum.mrp.config;
 
 import java.util.Properties;
 
-
-// Server-Konfiguration
+/**
+ * Server- und Security-Konfiguration (Port/Host, BCrypt-Rounds, Token-Settings).
+ * Werte kommen aus application.properties, damit man sie einfach ändern kann ohne Code anzufassen.
+ */
 public class ServerConfig {
     private static final Properties properties = new Properties();
 
     static {
-        // Nutze DatabaseConfig um properties zu laden
-        // (einfacher Trick: DatabaseConfig hat sie schon geladen)
+        // Beim Start properties Datei laden (ähnlich wie DatabaseConfig)
         try {
-            // Wir laden die properties nochmal für diese Klasse
-            // (in einem echten Projekt würde man das zentral machen)
             try (java.io.InputStream input = ServerConfig.class.getClassLoader()
                     .getResourceAsStream("application.properties")) {
                 if (input != null) {
@@ -24,7 +23,10 @@ public class ServerConfig {
         }
     }
 
-    // Server-Port (Standard: 8080).
+    /**
+     * Gibt den Server-Port zurück (Default: 8080).
+     * Falls jemand einen ungültigen Wert in die properties schreibt, fallen wir auf 8080 zurück.
+     */
     public static int getPort() {
         try {
             return Integer.parseInt(properties.getProperty("server.port", "8080"));
@@ -33,12 +35,18 @@ public class ServerConfig {
         }
     }
 
-    //Server-Host (Standard: localhost).
+    /**
+     * Hostname (Default: localhost).
+     * Ist v.a. nützlich, wenn man später mal nicht lokal testen will.
+     */
     public static String getHost() {
         return properties.getProperty("server.host", "localhost");
     }
 
-    // BCrypt Runden für Passwort-Hashing
+    /**
+     * BCrypt-Rounds: steuert wie "aufwendig" das Hashing ist.
+     * Mehr Runden = sicherer, aber Login/Register brauchen länger.
+     */
     public static int getBcryptRounds() {
         try {
             return Integer.parseInt(properties.getProperty("bcrypt.rounds", "12"));
@@ -47,8 +55,9 @@ public class ServerConfig {
         }
     }
 
-
-    // Token Ablaufzeit in Stunden
+    /**
+     * Token-Ablaufzeit in Stunden (Default: 24)
+     */
     public static int getTokenExpirationHours() {
         try {
             return Integer.parseInt(properties.getProperty("token.expiration.hours", "24"));
@@ -57,12 +66,16 @@ public class ServerConfig {
         }
     }
 
-    // Token Secret Key
+    /**
+     * Secret/Key für Token-Generierung (hardcoded für den Anfang).
+     */
     public static String getTokenSecret() {
         return properties.getProperty("token.secret", "student-project-key");
     }
 
-    // Zeigt Server-Konfiguration auf der Konsole an
+    /**
+     * Debugging-Ausgabe der Server-Settings beim Start.
+     */
     public static void printConfig() {
         System.out.println("=== Server Konfiguration ===");
         System.out.println("Host: " + getHost());
