@@ -9,37 +9,60 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Token-/Session-Service.
+ * Wir speichern Tokens in-memory (Map), d.h. nach Server-Restart sind alle Tokens ungültig.
+ */
 public class TokenService {
 
+    /**
+     * Kleine Session-Struktur: welcher User gehört zum Token + bis wann gültig.
+     */
     private static class Session {
         final int userId;
         final Instant expiresAt;
+
         Session(int userId, Instant expiresAt) {
             this.userId = userId;
             this.expiresAt = expiresAt;
         }
     }
 
+    // Thread-safe Map, weil HTTP Server parallel Requests verarbeitet
     private final Map<String, Session> sessions = new ConcurrentHashMap<>();
 
+    /**
+     * Erstellt ein neues Token und speichert es als Session ab.
+     */
     public String issueToken(int userId) {
         String token = UUID.randomUUID().toString();
-        Instant expires = Instant.now().plus(ServerConfig.getTokenExpirationHours(), ChronoUnit.HOURS);
+        Instant expires = Instant.now()
+                .plus(ServerConfig.getTokenExpirationHours(), ChronoUnit.HOURS);
+
         sessions.put(token, new Session(userId, expires));
         return token;
     }
 
+    /**
+     * Liest "Authorization: Bearer <token>" und liefert userId zurück.
+     * Wirft 401 wenn Header fehlt, Token ungültig oder abgelaufen.
+     */
     public int requireUserIdFromAuthHeader(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw ApiException.unauthorized("Missing/invalid Authorization header");
         }
+
         String token = authHeader.substring("Bearer ".length()).trim();
         Session s = sessions.get(token);
+
         if (s == null) throw ApiException.unauthorized("Invalid token");
+
+        // Ablaufzeit prüfen
         if (Instant.now().isAfter(s.expiresAt)) {
-            sessions.remove(token);
+            sessions.remove(token); // aufräumen
             throw ApiException.unauthorized("Token expired");
         }
+
         return s.userId;
     }
 }
