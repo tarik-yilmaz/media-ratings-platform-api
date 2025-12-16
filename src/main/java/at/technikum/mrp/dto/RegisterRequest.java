@@ -1,5 +1,9 @@
 package at.technikum.mrp.dto;
 
+/**
+ * DTO für User-Registration.
+ * Entspricht dem JSON Body bei POST /users/register.
+ */
 public class RegisterRequest {
     private String username;
     private String password;
@@ -11,9 +15,9 @@ public class RegisterRequest {
         this.password = password;
     }
 
-    // Getter/Setter
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
 
     public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }}
+    public void setPassword(String password) { this.password = password; }
+}
