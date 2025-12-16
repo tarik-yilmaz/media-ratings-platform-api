@@ -2,6 +2,11 @@ package at.technikum.mrp.model;
 
 import java.time.LocalDateTime;
 
+/**
+ * Domain-Model für einen User.
+ * Entspricht  der Tabelle "users" in der DB.
+ * Wichtig: kein klartext password, sondern passwordHash.
+ */
 public class User {
     private Integer id;
     private String username;
@@ -11,6 +16,7 @@ public class User {
     private Integer totalRatings = 0;
     private Double averageRating = 0.0;
 
+    // private User über Builder
     private User(Builder builder) {
         this.id = builder.id;
         this.username = builder.username;
@@ -30,6 +36,7 @@ public class User {
     public Integer getTotalRatings() { return totalRatings; }
     public Double getAverageRating() { return averageRating; }
 
+  // Builder für User
     public static class Builder {
         private Integer id;
         private String username;
@@ -81,6 +88,7 @@ public class User {
             if (passwordHash == null) {
                 throw new IllegalArgumentException("PasswordHash ist erforderlich");
             }
+            // Defaults absichern, falls DB mal NULL liefern würde
             if (totalRatings == null) totalRatings = 0;
             if (averageRating == null) averageRating = 0.0;
             return new User(this);
