@@ -105,18 +105,6 @@ public class Media {
         }
     }
 
-//    Hilfsmethode, falls man irgendwo im Code schnell prüfen will, ob type erlaubt ist.
-//    Vielleicht brauche ich es...
-//    private boolean isValidMediaType() {
-//        if (type == null) {
-//            return false;
-//        }
-//        String upperType = type.toUpperCase();
-//        return upperType.equals("MOVIE") ||
-//                upperType.equals("SERIES") ||
-//                upperType.equals("GAME");
-//    }
-
     // Entry-Point für Builder: Media.builder().title(...).type(...).build()
     public static Builder builder() {
         return new Builder();
