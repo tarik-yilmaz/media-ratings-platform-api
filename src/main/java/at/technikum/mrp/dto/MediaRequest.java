@@ -2,15 +2,19 @@ package at.technikum.mrp.dto;
 
 import java.util.List;
 
+/**
+ * DTO für Media Create/Update.
+ * Kommt als JSON rein und wird dann im Service in ein echtes Media-Model umgewandelt.
+ */
 public class MediaRequest {
     private String title;
     private String description;
-    private String mediaType;  // "MOVIE", "SERIES", "GAME"
+    private String mediaType;  // z.B. "movie" oder "MOVIE" (wird später normalisiert)
     private Integer releaseYear;
     private List<String> genres;
     private Integer ageRestriction;
 
-    // Getter und Setter
+    // Getter/Setter für Jackson + weitere Verarbeitung
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
 
