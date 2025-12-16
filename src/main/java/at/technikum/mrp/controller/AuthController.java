@@ -16,7 +16,6 @@ import java.util.Map;
  * HTTP-Controller für Authentifizierung:
  * - /users/register (User erstellen)
  * - /users/login (Token holen)
- *
  * Controller nur für HTTP/JSON. Logik (Hashing, DB, Token) liegt im AuthService.
  */
 public class AuthController {
@@ -54,7 +53,7 @@ public class AuthController {
             ));
 
         } catch (ApiException e) {
-            // ApiException enthält schon passenden Statuscode (z.B. 400, 409)
+            // ApiException enthält schon passenden Statuscode (z. B. 400, 409)
             HttpUtil.sendJson(exchange, e.getStatus(), Map.of("message", e.getMessage()));
         } catch (Exception e) {
             // Alles andere ist ein echter Serverfehler
