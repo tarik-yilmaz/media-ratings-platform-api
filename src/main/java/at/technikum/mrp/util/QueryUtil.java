@@ -22,7 +22,7 @@ public class QueryUtil {
         for (String pair : query.split("&")) {
             int idx = pair.indexOf('=');
 
-            // wenn kein "=" vorkommt, dann ist value einfach leer
+            // wenn kein "=" vorkommt, ist value einfach leer
             String key = (idx >= 0) ? pair.substring(0, idx) : pair;
             String val = (idx >= 0) ? pair.substring(idx + 1) : "";
 
