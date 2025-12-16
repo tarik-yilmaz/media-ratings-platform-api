@@ -9,12 +9,13 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Repository für Rating-Operationen in der Datenbank.
+ * Repository für Ratings.
+ * Enthält die JDBC/SQL-Logik für Insert/Update/Delete und einfache Abfragen.
  */
 public class RatingRepository {
 
     /**
-     * Findet ein Rating anhand der ID.
+     * Rating per ID holen.
      */
     public Optional<Rating> findById(Integer id) {
         String sql = "SELECT * FROM ratings WHERE id = ?";
@@ -35,7 +36,8 @@ public class RatingRepository {
     }
 
     /**
-     * Findet ein Rating anhand von Media- und User-ID.
+     * Rating anhand (mediaId, userId) holen.
+     * Praktisch weil in der DB UNIQUE(media_id, user_id) gilt.
      */
     public Optional<Rating> findByMediaAndUser(Integer mediaId, Integer userId) {
         String sql = "SELECT * FROM ratings WHERE media_id = ? AND user_id = ?";
@@ -57,7 +59,8 @@ public class RatingRepository {
     }
 
     /**
-     * Speichert ein neues Rating in der Datenbank.
+     * Speichert ein neues Rating.
+     * Achtung: Spaltennamen müssen zur schema.sql passen.
      */
     public Rating save(Rating rating) {
         String sql = "INSERT INTO ratings (media_id, user_id, stars, comment, confirmed) " +
@@ -76,6 +79,7 @@ public class RatingRepository {
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
+                // Neu gebautes Rating mit DB-Feldern
                 return Rating.builder()
                         .id(rs.getInt("id"))
                         .mediaId(rating.getMediaId())
@@ -94,7 +98,8 @@ public class RatingRepository {
     }
 
     /**
-     * Aktualisiert ein bestehendes Rating.
+     * Update eines Ratings.
+     * Sicherheitscheck: WHERE id AND user_id, damit nur der Ersteller updaten darf.
      */
     public boolean update(Rating rating) {
         String sql = "UPDATE ratings SET stars = ?, comment = ?, confirmed = ? " +
@@ -119,7 +124,8 @@ public class RatingRepository {
     }
 
     /**
-     * Löscht ein Rating (nur der Ersteller kann es löschen).
+     * Delete eines Ratings.
+     * Sicherheitscheck: nur Ersteller (user_id) darf löschen.
      */
     public boolean delete(Integer ratingId, Integer userId) {
         String sql = "DELETE FROM ratings WHERE id = ? AND user_id = ?";
@@ -140,7 +146,7 @@ public class RatingRepository {
     }
 
     /**
-     * Holt alle Ratings eines Media.
+     * Alle Ratings zu einem Media (neueste zuerst).
      */
     public List<Rating> findByMediaId(Integer mediaId) {
         List<Rating> ratings = new ArrayList<>();
@@ -162,7 +168,7 @@ public class RatingRepository {
     }
 
     /**
-     * Holt alle Ratings eines Users.
+     * Alle Ratings eines Users (z.B. Profil/History).
      */
     public List<Rating> findByUserId(Integer userId) {
         List<Rating> ratings = new ArrayList<>();
@@ -184,7 +190,8 @@ public class RatingRepository {
     }
 
     /**
-     * Bestätigt einen Kommentar (setzt confirmed = true).
+     * Setzt confirmed = true.
+     * Für die Bestätigung des Kommentars.
      */
     public boolean confirmComment(Integer ratingId, Integer userId) {
         String sql = "UPDATE ratings SET confirmed = TRUE WHERE id = ? AND user_id = ?";
@@ -205,7 +212,7 @@ public class RatingRepository {
     }
 
     /**
-     * Hilfsmethode: Konvertiert ResultSet zu Rating-Objekt.
+     * Mapping: ResultSet -> Rating (DB -> Java Objekt).
      */
     private Rating mapResultSetToRating(ResultSet rs) throws SQLException {
         return Rating.builder()
