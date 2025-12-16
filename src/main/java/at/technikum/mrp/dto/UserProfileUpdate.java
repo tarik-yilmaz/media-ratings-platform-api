@@ -1,5 +1,9 @@
 package at.technikum.mrp.dto;
 
+/**
+ * DTO für "User Profil bearbeiten".
+ * Entspricht dem JSON Body bei PUT /users/{id}/profile.
+ */
 public class UserProfileUpdate {
     private String email;
     private String favoriteGenre;
