@@ -11,9 +11,9 @@ import at.technikum.mrp.util.QueryUtil;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * HTTP-Controller für Media-Endpoints.
@@ -127,49 +127,36 @@ public class MediaController {
 
     /**
      * GET /api/media
-     * Optional: Query-Parameter für Filter + Sortierung (title, genre, releaseYear, sortBy, ...).
      */
     private void handleList(HttpExchange exchange) throws IOException {
         Map<String, String> q = QueryUtil.parse(exchange.getRequestURI().getQuery());
 
-        // Query Parameter sind alle optional, deshalb Optional<T>
-        Optional<String> title = Optional.ofNullable(q.get("title"));
-        Optional<String> genre = Optional.ofNullable(q.get("genre"));
-        Optional<String> mediaType = Optional.ofNullable(q.get("mediaType"));
-        Optional<Integer> releaseYear = parseIntOpt(q.get("releaseYear"));
-        Optional<Integer> ageRestriction = parseIntOpt(q.get("ageRestriction"));
-        Optional<Double> rating = parseDoubleOpt(q.get("rating"));
-        Optional<String> sortBy = Optional.ofNullable(q.get("sortBy"));
+        String title = q.get("title");
+        String genre = q.get("genre");
+        String mediaType = q.get("mediaType");
+        Integer releaseYear = parseIntOrNull(q.get("releaseYear"));
+        Integer ageRestriction = parseIntOrNull(q.get("ageRestriction"));
+        Double rating = parseDoubleOrNull(q.get("rating"));
+        String sortBy = q.get("sortBy");
 
         List<Media> list = mediaService.list(title, genre, mediaType, releaseYear, ageRestriction, rating, sortBy);
 
-        // Wir geben eine JSON-Liste zurück
-        HttpUtil.sendJson(exchange, 200, list.stream().map(this::toMediaJson).toList());
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Media m : list) {
+            out.add(toMediaJson(m));
+        }
+
+        HttpUtil.sendJson(exchange, 200, out);
     }
 
-    /**
-     * Kleine Hilfsmethode: parse String -> int, ansonsten Optional.empty()
-     * (damit Query-Parsing nicht überall try/catch braucht)
-     */
-    private Optional<Integer> parseIntOpt(String s) {
-        if (s == null || s.isBlank()) return Optional.empty();
-        try {
-            return Optional.of(Integer.parseInt(s));
-        } catch (Exception e) {
-            return Optional.empty();
-        }
+    private Integer parseIntOrNull(String s) {
+        if (s == null || s.isBlank()) return null;
+        try { return Integer.parseInt(s); } catch (Exception e) { return null; }
     }
 
-    /**
-     * Kleine Hilfsmethode: parse String -> double, ansonsten Optional.empty()
-     */
-    private Optional<Double> parseDoubleOpt(String s) {
-        if (s == null || s.isBlank()) return Optional.empty();
-        try {
-            return Optional.of(Double.parseDouble(s));
-        } catch (Exception e) {
-            return Optional.empty();
-        }
+    private Double parseDoubleOrNull(String s) {
+        if (s == null || s.isBlank()) return null;
+        try { return Double.parseDouble(s); } catch (Exception e) { return null; }
     }
 
     /**
