@@ -4,20 +4,21 @@ for the winter semester 2025 at the University of Applied Sciences FH Technikum 
 
 # Usage
 ## Start
-docker compose -f .\docker\docker-compose.yml up -d
+docker compose up -d
 
 ## Check status
-docker compose -f .\docker\docker-compose.yml ps
+docker compose ps
 
 ## Check logs
-docker compose -f .\docker\docker-compose.yml logs -f
+docker compose logs -f
 
 ## Stop (stop container, hold data)
-docker compose -f .\docker\docker-compose.yml down
+docker compose down
 
 ## Reset (stop container, delete DB, initialize new schema)
-docker compose -f .\docker\docker-compose.yml down -v
-docker compose -f .\docker\docker-compose.yml up -d
+docker compose down -v
+docker compose up -d
+
 
 ## Test Postman (MRP_Postman_Collection.json)
 1. Auth -> Register User:
