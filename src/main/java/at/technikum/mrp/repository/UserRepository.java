@@ -9,13 +9,13 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Repository für User-Operationen in der Datenbank.
- * Implementiert CRUD (Create, Read, Update, Delete) für User.
+ * Repository für User.
+ * CRUD + ein paar extra Methoden (findByUsername, updateUserStatistics).
  */
 public class UserRepository {
 
     /**
-     * Findet einen User anhand des Usernames.
+     * Sucht einen User über username (wichtig für Login).
      */
     public Optional<User> findByUsername(String username) {
         String sql = "SELECT * FROM users WHERE username = ?";
@@ -36,7 +36,7 @@ public class UserRepository {
     }
 
     /**
-     * Findet einen User anhand der ID.
+     * Sucht einen User über ID.
      */
     public Optional<User> findById(Integer id) {
         String sql = "SELECT * FROM users WHERE id = ?";
@@ -57,8 +57,8 @@ public class UserRepository {
     }
 
     /**
-     * Speichert einen neuen User in der Datenbank.
-     * Gibt den gespeicherten User mit generierter ID zurück.
+     * Insert eines neuen Users.
+     * RETURNING gibt id + created_at zurück (PostgreSQL).
      */
     public User save(User user) {
         String sql = "INSERT INTO users (username, password_hash, email) VALUES (?, ?, ?) " +
@@ -69,7 +69,7 @@ public class UserRepository {
 
             stmt.setString(1, user.getUsername());
             stmt.setString(2, user.getPasswordHash());
-            stmt.setString(3, user.getEmail());
+            stmt.setString(3, user.getEmail()); // email ist optional
 
             ResultSet rs = stmt.executeQuery();
 
@@ -91,7 +91,7 @@ public class UserRepository {
     }
 
     /**
-     * Aktualisiert einen bestehenden User.
+     * Update eines Users (z.B. Profiländerung / Passwortwechsel).
      */
     public boolean update(User user) {
         String sql = "UPDATE users SET username = ?, password_hash = ?, email = ?, " +
@@ -117,7 +117,8 @@ public class UserRepository {
     }
 
     /**
-     * Löscht einen User anhand der ID.
+     * Löscht einen User per ID.
+     * Achtung: In der DB gibt es ON DELETE CASCADE bei ratings/favorites -> die werden dann mitgelöscht.
      */
     public boolean delete(Integer id) {
         String sql = "DELETE FROM users WHERE id = ?";
@@ -136,7 +137,7 @@ public class UserRepository {
     }
 
     /**
-     * Gibt alle Users zurück (für Admin-Funktionen).
+     * Liefert alle Users (z.B. Admin-Ansicht).
      */
     public List<User> findAll() {
         List<User> users = new ArrayList<>();
@@ -156,7 +157,8 @@ public class UserRepository {
     }
 
     /**
-     * Aktualisiert die User-Statistiken (Anzahl und Durchschnitt der Ratings).
+     * Berechnet total_ratings und average_rating neu.
+     * Das ist eine "Denormalisierung": wir speichern Stats in users, damit man sie schnell abfragen kann.
      */
     public boolean updateUserStatistics(Integer userId) {
         String sql = "UPDATE users SET " +
@@ -181,7 +183,8 @@ public class UserRepository {
     }
 
     /**
-     * Hilfsmethode: Konvertiert ResultSet zu User-Objekt.
+     * Mapping: ResultSet -> User.
+     * Wichtig: password_hash kommt mit, weil wir ihn für Login brauchen.
      */
     private User mapResultSetToUser(ResultSet rs) throws SQLException {
         return User.builder()
