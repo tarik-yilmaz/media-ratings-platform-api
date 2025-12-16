@@ -4,20 +4,20 @@ import at.technikum.mrp.config.DatabaseConfig;
 import at.technikum.mrp.model.Media;
 
 import java.sql.*;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Repository für Media-Operationen in der Datenbank.
- * Einfache String-Lösung für Medientypen (keine Enums).
+ * Repository für Media-Operationen.
+ * Nur SQL/JDBC-Logik, damit Services/Controller sauber bleiben.
  */
 public class MediaRepository {
 
     /**
-     * Findet ein Media anhand der ID.
+     * Holt ein Media per ID.
+     * Optional.empty() wenn nicht gefunden oder SQL-Fehler.
      */
     public Optional<Media> findById(Integer id) {
         String sql = "SELECT * FROM media WHERE id = ?";
@@ -38,7 +38,8 @@ public class MediaRepository {
     }
 
     /**
-     * Speichert ein neues Media in der Datenbank.
+     * Insert eines neuen Media.
+     * RETURNING liefert die generierte id und created_at zurück (PostgreSQL Feature).
      */
     public Media save(Media media) {
         String sql = "INSERT INTO media (title, description, media_type, release_year, " +
@@ -51,7 +52,7 @@ public class MediaRepository {
 
             stmt.setString(1, media.getTitle());
             stmt.setString(2, media.getDescription());
-            stmt.setString(3, media.getType());  // String direkt
+            stmt.setString(3, media.getType());
             stmt.setObject(4, media.getReleaseYear(), Types.INTEGER);
             stmt.setString(5, genresToString(media.getGenres()));
             stmt.setObject(6, media.getAgeRestriction(), Types.INTEGER);
@@ -61,6 +62,7 @@ public class MediaRepository {
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
+                // Wir bauen ein neues Media mit den DB-Feldern (id, created_at)
                 return Media.builder()
                         .id(rs.getInt("id"))
                         .title(media.getTitle())
@@ -77,12 +79,12 @@ public class MediaRepository {
         } catch (SQLException e) {
             System.err.println("Fehler beim Speichern des Media: " + e.getMessage());
         }
-        return null;
+        return null; // Service macht daraus dann einen 500er
     }
 
     /**
-     * Aktualisiert ein bestehendes Media.
-     * Nur der Ersteller (creator) kann sein Media updaten.
+     * Update eines Media.
+     * Security-Check über SQL: update nur wenn id UND creator_id passen.
      */
     public boolean update(Media media) {
         String sql = "UPDATE media SET title = ?, description = ?, media_type = ?, " +
@@ -112,7 +114,8 @@ public class MediaRepository {
     }
 
     /**
-     * Löscht ein Media (nur der Ersteller kann löschen).
+     * Delete eines Media.
+     * Nur möglich wenn creator_id passt (damit nicht jeder alles löschen kann).
      */
     public boolean delete(Integer mediaId, Integer creatorId) {
         String sql = "DELETE FROM media WHERE id = ? AND creator_id = ?";
@@ -133,7 +136,7 @@ public class MediaRepository {
     }
 
     /**
-     * Sucht Media nach Titel (partial matching).
+     * Suche nach Titel (case-insensitive).
      */
     public List<Media> searchByTitle(String searchTerm) {
         List<Media> mediaList = new ArrayList<>();
@@ -155,7 +158,7 @@ public class MediaRepository {
     }
 
     /**
-     * Holt alle Media aus der Datenbank (für Liste).
+     * Gibt alle Media zurück (unfiltered).
      */
     public List<Media> findAll() {
         List<Media> mediaList = new ArrayList<>();
@@ -175,7 +178,7 @@ public class MediaRepository {
     }
 
     /**
-     * Holt alle Media eines bestimmten Creators.
+     * Media eines bestimmten Creators (z.B. "meine Einträge").
      */
     public List<Media> findByCreatorId(Integer creatorId) {
         List<Media> mediaList = new ArrayList<>();
@@ -197,8 +200,7 @@ public class MediaRepository {
     }
 
     /**
-     * Aktualisiert den average_score eines Media.
-     * Wird aufgerufen, wenn neue Bewertungen hinzukommen.
+     * Rechnet average_score neu aus (AVG aller ratings für dieses Media).
      */
     public boolean updateAverageScore(Integer mediaId) {
         String sql = "UPDATE media SET average_score = " +
@@ -221,14 +223,15 @@ public class MediaRepository {
     }
 
     /**
-     * Hilfsmethode: Konvertiert ResultSet zu Media-Objekt.
+     * Mapping: ResultSet -> Media.
+     * Hier passiert die "Übersetzung" DB-Spaltennamen -> Java-Felder.
      */
     private Media mapResultSetToMedia(ResultSet rs) throws SQLException {
         return Media.builder()
                 .id(rs.getInt("id"))
                 .title(rs.getString("title"))
                 .description(rs.getString("description"))
-                .type(rs.getString("media_type"))  // String direkt
+                .type(rs.getString("media_type"))
                 .releaseYear(rs.getInt("release_year"))
                 .genres(stringToGenres(rs.getString("genres")))
                 .ageRestriction(rs.getInt("age_restriction"))
@@ -239,7 +242,7 @@ public class MediaRepository {
     }
 
     /**
-     * Konvertiert List<String> zu komma-separiertem String für DB.
+     * Speichert Genres als "Action,Drama,...".
      */
     private String genresToString(List<String> genres) {
         if (genres == null || genres.isEmpty()) {
@@ -249,7 +252,7 @@ public class MediaRepository {
     }
 
     /**
-     * Konvertiert komma-separierten String zu List<String>.
+     * Liest Genres aus "Action,Drama,..." und macht daraus wieder eine Liste.
      */
     private List<String> stringToGenres(String genresString) {
         if (genresString == null || genresString.trim().isEmpty()) {
@@ -258,7 +261,10 @@ public class MediaRepository {
         return Arrays.asList(genresString.split(","));
     }
 
-
+    /**
+     * Kombinierte Filter-Suche + Sortierung.
+     * Baut SQL dynamisch zusammen, je nachdem welche Filter gesetzt sind.
+     */
     public List<Media> findFiltered(String title,
                                     String genre,
                                     String mediaType,
@@ -271,6 +277,7 @@ public class MediaRepository {
         StringBuilder sql = new StringBuilder("SELECT * FROM media WHERE 1=1 ");
         List<Object> params = new ArrayList<>();
 
+        // "WHERE 1=1" macht es einfacher, immer nur "AND ..." anzuhängen
         if (title != null && !title.isBlank()) {
             sql.append("AND LOWER(title) LIKE LOWER(?) ");
             params.add("%" + title + "%");
@@ -296,6 +303,7 @@ public class MediaRepository {
             params.add(minRating);
         }
 
+        // Sortierung: wir erlauben nur bestimmte Spalten -> Schutz gegen SQL Injection
         String order = "title";
         if (sortBy != null) {
             switch (sortBy) {
@@ -309,6 +317,7 @@ public class MediaRepository {
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
 
+            // Parameter in derselben Reihenfolge setzen, wie wir sie oben gesammelt haben
             for (int i = 0; i < params.size(); i++) {
                 stmt.setObject(i + 1, params.get(i));
             }
@@ -323,5 +332,4 @@ public class MediaRepository {
 
         return mediaList;
     }
-
 }
