@@ -1,5 +1,9 @@
 package at.technikum.mrp.dto;
 
+/**
+ * DTO für Rating Create/Update.
+ * Wird später für POST /media/{id}/rate bzw. PUT /ratings/{id} verwendet.
+ */
 public class RatingRequest {
     private Integer stars; // 1-5
     private String comment;
@@ -11,7 +15,6 @@ public class RatingRequest {
         this.comment = comment;
     }
 
-    // Getter und Setter
     public Integer getStars() { return stars; }
     public void setStars(Integer stars) { this.stars = stars; }
 
