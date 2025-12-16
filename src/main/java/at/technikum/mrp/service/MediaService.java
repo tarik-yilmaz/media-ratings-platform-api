@@ -39,7 +39,7 @@ public class MediaService {
                 .description(req.getDescription())
                 .type(req.getMediaType())
                 // releaseYear kann null sein (optional)
-                .releaseYear(req.getReleaseYear()) // <- Achtung: bei dir steht aktuell ein "a" im Code, das muss weg
+                .releaseYear(req.getReleaseYear())
                 .genres(req.getGenres())
                 .ageRestriction(req.getAgeRestriction())
                 .creatorId(userId)
@@ -62,24 +62,24 @@ public class MediaService {
     /**
      * Liste + Filter. Die eigentliche Filter-SQL liegt im Repository (findFiltered).
      */
-    public List<Media> list(Optional<String> title,
-                            Optional<String> genre,
-                            Optional<String> mediaType,
-                            Optional<Integer> releaseYear,
-                            Optional<Integer> ageRestriction,
-                            Optional<Double> minRating,
-                            Optional<String> sortBy) {
+    public List<Media> list(String title,
+                            String genre,
+                            String mediaType,
+                            Integer releaseYear,
+                            Integer ageRestriction,
+                            Double minRating,
+                            String sortBy) {
 
         return mediaRepository.findFiltered(
-                title.orElse(null),
-                genre.orElse(null),
-                mediaType.orElse(null),
-                releaseYear.orElse(null),
-                ageRestriction.orElse(null),
-                minRating.orElse(null),
-                sortBy.orElse(null)
+                title,
+                genre,
+                mediaType,
+                releaseYear,
+                ageRestriction,
+                minRating,
+                sortBy
         );
-    }
+}
 
     /**
      * Update: nur creator darf ändern.
