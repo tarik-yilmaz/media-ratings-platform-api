@@ -211,68 +211,49 @@ public class RatingRepository {
         }
     }
 
-    public boolean incrementLikes(int ratingId) {
-        String sql = "UPDATE ratings SET likes_count = likes_count + 1 WHERE id = ?";
-
-        try (Connection conn = DatabaseConfig.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setInt(1, ratingId);
-            int rows = stmt.executeUpdate();
-            return rows > 0;
-
-        } catch (SQLException e) {
-            System.err.println("Fehler beim Liken des Ratings: " + e.getMessage());
-            return false;
-        }
-    }
-
     /**
      * Fügt einen Like für ein Rating hinzu (max. 1 Like pro User pro Rating).
      * Gibt true zurück, wenn der Like neu war. false, wenn der User schon geliked hat.
      */
     public boolean addLike(int ratingId, int userId) {
-        String insertLikeSql =
-                "INSERT INTO rating_likes (rating_id, user_id) VALUES (?, ?) " +
-                        "ON CONFLICT (rating_id, user_id) DO NOTHING";
+        String insert = "INSERT INTO rating_likes (rating_id, user_id) VALUES (?, ?) " +
+                "ON CONFLICT (rating_id, user_id) DO NOTHING";
+        String update = "UPDATE ratings SET likes_count = likes_count + 1 WHERE id = ?";
 
-        String incCountSql =
-                "UPDATE ratings SET likes_count = likes_count + 1 WHERE id = ?";
-
-        try (Connection conn = DatabaseConfig.getConnection()) {
+        Connection conn = null;
+        try {
+            conn = DatabaseConfig.getConnection();
             conn.setAutoCommit(false);
 
-            int inserted;
-            try (PreparedStatement ins = conn.prepareStatement(insertLikeSql)) {
+            try (PreparedStatement ins = conn.prepareStatement(insert)) {
                 ins.setInt(1, ratingId);
                 ins.setInt(2, userId);
-                inserted = ins.executeUpdate();
+
+                int inserted = ins.executeUpdate();
+                if (inserted == 0) {
+                    conn.rollback(); // Like war schon vorhanden
+                    return false;
+                }
             }
 
-            if (inserted == 0) {
-                conn.rollback();
-                return false;
-            }
-
-            int updated;
-            try (PreparedStatement upd = conn.prepareStatement(incCountSql)) {
+            try (PreparedStatement upd = conn.prepareStatement(update)) {
                 upd.setInt(1, ratingId);
-                updated = upd.executeUpdate();
-            }
-
-            if (updated == 0) {
-                conn.rollback(); // sollte nicht passieren, aber sicher ist sicher
-                return false;
+                upd.executeUpdate();
             }
 
             conn.commit();
             return true;
 
         } catch (SQLException e) {
-            System.err.println("Fehler beim Liken eines Ratings: " + e.getMessage());
+            try { if (conn != null) conn.rollback(); } catch (SQLException ignored) {}
+            System.err.println("Fehler beim Liken des Ratings: " + e.getMessage());
             return false;
+        } finally {
+            try { if (conn != null) conn.setAutoCommit(true); } catch (SQLException ignored) {}
+            try { if (conn != null) conn.close(); } catch (SQLException ignored) {}
         }
     }
+
     /**
      * Liked ein Rating genau 1x pro User.
      * - legt einen Eintrag in rating_likes an (UNIQUE verhindert Doppel-Likes)
