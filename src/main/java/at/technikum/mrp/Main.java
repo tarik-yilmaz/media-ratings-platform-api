@@ -2,10 +2,7 @@ package at.technikum.mrp;
 
 import at.technikum.mrp.config.DatabaseConfig;
 import at.technikum.mrp.config.ServerConfig;
-import at.technikum.mrp.controller.AuthController;
-import at.technikum.mrp.controller.FavoritesController;
-import at.technikum.mrp.controller.MediaController;
-import at.technikum.mrp.controller.RatingController;
+import at.technikum.mrp.controller.*;
 import at.technikum.mrp.repository.FavoritesRepository;
 import at.technikum.mrp.repository.MediaRepository;
 import at.technikum.mrp.repository.RatingRepository;
@@ -41,9 +38,20 @@ public class Main {
         MediaController mediaController = new MediaController(mediaService, tokenService, ratingService, favoritesService);
         RatingController ratingController = new RatingController(ratingService, tokenService);
         FavoritesController favoritesController = new FavoritesController(favoritesService, tokenService);
+        UserController userController = new UserController(tokenService, userRepository, ratingService, mediaService);
+        LeaderboardController leaderboardController = new LeaderboardController(userRepository);
 
 // Server
-        MrpHttpServer server = new MrpHttpServer(ServerConfig.getPort(), authController, mediaController, ratingController, favoritesController);
+        MrpHttpServer server = new MrpHttpServer(
+                ServerConfig.getPort(),
+                authController,
+                mediaController,
+                ratingController,
+                favoritesController,
+                userController,
+                leaderboardController
+        );
+
         server.start();
 
 
