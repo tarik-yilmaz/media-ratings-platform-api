@@ -212,6 +212,25 @@ public class RatingRepository {
     }
 
     /**
+     * Erhöht likes_count um 1 (Like).
+     */
+    public boolean incrementLikes(Integer ratingId) {
+        String sql = "UPDATE ratings SET likes_count = likes_count + 1 WHERE id = ?";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, ratingId);
+            int rows = stmt.executeUpdate();
+            return rows > 0;
+
+        } catch (SQLException e) {
+            System.err.println("Fehler beim Liken des Ratings: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Mapping: ResultSet -> Rating (DB -> Java Objekt).
      */
     private Rating mapResultSetToRating(ResultSet rs) throws SQLException {
