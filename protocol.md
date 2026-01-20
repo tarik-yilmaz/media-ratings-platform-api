@@ -170,6 +170,8 @@ Problem:
 
 Fix:
 Added dependency to `jackson-datatype-jsr310`.
+
+
 ## 4) Estimated time tracking for each major part of the project
 
 - Project setup (repo, IntelliJ, Maven ): ca. 2h
