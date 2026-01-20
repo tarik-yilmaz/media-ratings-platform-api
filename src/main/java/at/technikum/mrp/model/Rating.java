@@ -5,19 +5,18 @@ import java.time.LocalDateTime;
 /**
  * Domain-Model für eine Bewertung (Rating).
  * Entspricht der Tabelle "ratings" in der DB.
- * Ein Rating gehört zu genau einem Media und einem User.
  */
 public class Rating {
+
     private Integer id;
     private Integer mediaId;
     private Integer userId;
-    private Integer stars;  // 1-5
+    private Integer stars;
     private String comment;
-    private Boolean confirmed = false;  // ob Kommentar bestätigt wurde
-    private Integer likesCount = 0;     // Anzahl Likes
+    private Boolean confirmed;
+    private Integer likesCount;
     private LocalDateTime createdAt;
 
-    // private Rating über Builder
     private Rating(Builder builder) {
         this.id = builder.id;
         this.mediaId = builder.mediaId;
@@ -29,7 +28,7 @@ public class Rating {
         this.createdAt = builder.createdAt;
     }
 
-    // Getter
+    // Getters
     public Integer getId() { return id; }
     public Integer getMediaId() { return mediaId; }
     public Integer getUserId() { return userId; }
@@ -39,10 +38,11 @@ public class Rating {
     public Integer getLikesCount() { return likesCount; }
     public LocalDateTime getCreatedAt() { return createdAt; }
 
-    /**
-     * Builder für Rating wie bei Media und User.
-     * Validiert Sternebereich und Pflichtfelder (mediaId, userId).
-     */
+    // Setters
+    public void setId(Integer id) { this.id = id; }
+    public void setLikesCount(Integer likesCount) { this.likesCount = likesCount; }
+    public void setConfirmed(Boolean confirmed) { this.confirmed = confirmed; }
+
     public static class Builder {
         private Integer id;
         private Integer mediaId;
@@ -53,6 +53,8 @@ public class Rating {
         private Integer likesCount = 0;
         private LocalDateTime createdAt = LocalDateTime.now();
 
+        public Builder() {}
+
         public Builder id(Integer id) { this.id = id; return this; }
         public Builder mediaId(Integer mediaId) { this.mediaId = mediaId; return this; }
         public Builder userId(Integer userId) { this.userId = userId; return this; }
@@ -60,21 +62,9 @@ public class Rating {
         public Builder comment(String comment) { this.comment = comment; return this; }
         public Builder confirmed(Boolean confirmed) { this.confirmed = confirmed; return this; }
         public Builder likesCount(Integer likesCount) { this.likesCount = likesCount; return this; }
-        public Builder createdAt(LocalDateTime time) { this.createdAt = time; return this; }
+        public Builder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
 
         public Rating build() {
-            if (mediaId == null) throw new IllegalArgumentException("MediaId ist erforderlich");
-            if (userId == null) throw new IllegalArgumentException("UserId ist erforderlich");
-
-            // Sterne müssen im Bereich 1..5 liegen (passt zur DB-Constraint)
-            if (stars == null || stars < 1 || stars > 5) {
-                throw new IllegalArgumentException("Sterne müssen zwischen 1 und 5 sein");
-            }
-
-            // Defaults
-            if (likesCount == null) likesCount = 0;
-            if (confirmed == null) confirmed = false;
-
             return new Rating(this);
         }
     }
