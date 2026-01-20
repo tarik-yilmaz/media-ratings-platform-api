@@ -6,6 +6,9 @@ Built as a Java project for the FH Technikum Vienna course **SWEN1 (WS 2025)**.
 This project provides a REST-based HTTP server that exposes an API for potential frontends
 (Web, Mobile, Console). The frontend itself is **not** part of this project.
 
+**Link for GitHub Repository:**
+https://github.com/tarik-yilmaz/media-ratings-platform-api
+
 ---
 
 ## Features (Overview)
