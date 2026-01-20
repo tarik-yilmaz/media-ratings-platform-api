@@ -273,6 +273,65 @@ public class RatingRepository {
             return false;
         }
     }
+    /**
+     * Liked ein Rating genau 1x pro User.
+     * - legt einen Eintrag in rating_likes an (UNIQUE verhindert Doppel-Likes)
+     * - erhöht likes_count im ratings Datensatz
+     *
+     * @return true wenn Like neu gesetzt wurde, false wenn User schon geliked hat
+     */
+    public boolean likeRating(int ratingId, int userId) {
+        String insertLike =
+                "INSERT INTO rating_likes (rating_id, user_id) VALUES (?, ?) " +
+                        "ON CONFLICT (rating_id, user_id) DO NOTHING";
+
+        String updateCount =
+                "UPDATE ratings SET likes_count = likes_count + 1 WHERE id = ?";
+
+        try (Connection conn = DatabaseConfig.getConnection()) {
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement ins = conn.prepareStatement(insertLike);
+                 PreparedStatement upd = conn.prepareStatement(updateCount)) {
+
+                // 1) Like-Row versuchen einzufügen
+                ins.setInt(1, ratingId);
+                ins.setInt(2, userId);
+                int inserted = ins.executeUpdate();
+
+                // schon geliked -> nichts ändern
+                if (inserted == 0) {
+                    conn.rollback();
+                    return false;
+                }
+
+                // 2) likes_count hochzählen
+                upd.setInt(1, ratingId);
+                int updated = upd.executeUpdate();
+
+                // Sollte praktisch nie passieren (weil Service vorher findById macht),
+                // aber falls das Rating zwischenzeitlich gelöscht wurde:
+                if (updated == 0) {
+                    conn.rollback();
+                    throw new SQLException("Rating nicht gefunden beim Like-Update");
+                }
+
+                conn.commit();
+                return true;
+
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+
+        } catch (SQLException e) {
+            // Hier NICHT "false" zurückgeben, sonst würden wir echte DB-Fehler als "schon geliked" missverstehen
+            throw new RuntimeException("Fehler beim Liken des Ratings: " + e.getMessage(), e);
+        }
+    }
+
 
     /**
      * Mapping: ResultSet -> Rating (DB -> Java Objekt).
