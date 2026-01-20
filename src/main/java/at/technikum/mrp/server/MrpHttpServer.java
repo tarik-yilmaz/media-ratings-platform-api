@@ -4,7 +4,10 @@ import at.technikum.mrp.controller.AuthController;
 import at.technikum.mrp.controller.FavoritesController;
 import at.technikum.mrp.controller.MediaController;
 import at.technikum.mrp.controller.RatingController;
+import at.technikum.mrp.model.User;
 import com.sun.net.httpserver.HttpServer;
+import at.technikum.mrp.controller.UserController;
+import at.technikum.mrp.controller.LeaderboardController;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -23,7 +26,9 @@ public class MrpHttpServer {
             AuthController authController,
             MediaController mediaController,
             RatingController ratingController,
-            FavoritesController favoritesController
+            FavoritesController favoritesController,
+            UserController userController,
+            LeaderboardController leaderboardController
     ) throws IOException {
 
         // Bindet auf den Port (localhost:port)
@@ -41,6 +46,9 @@ public class MrpHttpServer {
         server.createContext("/api/ratings", ratingController::handle);
         server.createContext("/api/ratings", ratingController::handle);
         server.createContext("/api/users/favorites", favoritesController::handle);
+
+        server.createContext("/api/users", userController::handle);      // /api/users/{username}/profile, /ratings
+        server.createContext("/api/leaderboard", leaderboardController::handle);
 
         // Einfacher Threadpool, damit Requests parallel verarbeitet werden können
         server.setExecutor(Executors.newFixedThreadPool(16));
