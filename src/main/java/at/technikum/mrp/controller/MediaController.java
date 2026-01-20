@@ -1,8 +1,11 @@
 package at.technikum.mrp.controller;
 
 import at.technikum.mrp.dto.MediaRequest;
+import at.technikum.mrp.dto.RatingRequest;
 import at.technikum.mrp.model.Media;
+import at.technikum.mrp.model.Rating;
 import at.technikum.mrp.service.MediaService;
+import at.technikum.mrp.service.RatingService;
 import at.technikum.mrp.service.TokenService;
 import at.technikum.mrp.util.ApiException;
 import at.technikum.mrp.util.HttpUtil;
@@ -23,6 +26,7 @@ import java.util.Map;
  * - GET  /api/media/{id}         (ein Media holen)
  * - PUT  /api/media/{id}         (Media updaten)
  * - DELETE /api/media/{id}       (Media löschen)
+ * - POST /api/media/{id}/rate    (Media bewerten)
  *
  * Alle Media-Endpoints sind geschützt -> Authorization: Bearer <token> ist Pflicht.
  */
@@ -30,32 +34,63 @@ public class MediaController {
 
     private final MediaService mediaService;
     private final TokenService tokenService;
+    private final RatingService ratingService;
 
-    public MediaController(MediaService mediaService, TokenService tokenService) {
+    public MediaController(MediaService mediaService, TokenService tokenService, RatingService ratingService) {
         this.mediaService = mediaService;
         this.tokenService = tokenService;
+        this.ratingService = ratingService;
     }
 
-    /**
-     * Zentraler Handler für alle Requests unter /api/media.
-     * Wir unterscheiden hier anhand von Pfad und HTTP-Methode, was gemacht werden soll.
-     */
     public void handle(HttpExchange exchange) throws IOException {
         try {
-            // Auth check: wenn Token fehlt/ungültig -> ApiException (401)
             int userId = tokenService.requireUserIdFromAuthHeader(
                     exchange.getRequestHeaders().getFirst("Authorization")
             );
 
-            String path = exchange.getRequestURI().getPath(); // z.B. /api/media oder /api/media/123
+            String path = exchange.getRequestURI().getPath(); // z.B. /api/media oder /api/media/123 oder /api/media/123/rate
             String method = exchange.getRequestMethod().toUpperCase();
 
-            // Pfad in Teile splitten: ["", "api", "media", "{id}"]
             String[] parts = path.split("/");
+
+            // -----------------------------
+            // Spezialfall: /api/media/{id}/rate
+            // -----------------------------
+            if (parts.length == 5 && "rate".equals(parts[4])) {
+                int mediaId;
+                try {
+                    mediaId = Integer.parseInt(parts[3]);
+                } catch (NumberFormatException ex) {
+                    throw ApiException.badRequest("mediaId muss eine Zahl sein");
+                }
+
+                if (!method.equals("POST")) {
+                    HttpUtil.sendEmpty(exchange, 405);
+                    return;
+                }
+
+                String body = HttpUtil.readBody(exchange);
+                RatingRequest req = JsonUtil.MAPPER.readValue(body, RatingRequest.class);
+
+                Rating created = ratingService.rateMedia(userId, mediaId, req);
+
+                HttpUtil.sendJson(exchange, 201, Map.of(
+                        "id", created.getId(),
+                        "mediaId", created.getMediaId(),
+                        "userId", created.getUserId(),
+                        "stars", created.getStars(),
+                        "comment", created.getComment(),
+                        "confirmed", created.getConfirmed(),
+                        "likesCount", created.getLikesCount(),
+                        "createdAt", created.getCreatedAt()
+                ));
+                return;
+            }
+
+            // Normalfall: /api/media oder /api/media/{id}
             boolean hasId = parts.length == 4;
 
             if (!hasId) {
-                // Collection-Endpoint: /api/media
                 if (method.equals("GET")) {
                     handleList(exchange);
                     return;
@@ -69,12 +104,11 @@ public class MediaController {
                 return;
             }
 
-            // Item-Endpoint: /api/media/{id}
+            // /api/media/{id}
             int mediaId;
             try {
                 mediaId = Integer.parseInt(parts[3]);
             } catch (NumberFormatException ex) {
-                // z.B. /api/media/abc
                 throw ApiException.badRequest("mediaId muss eine Zahl sein");
             }
 
@@ -88,14 +122,12 @@ public class MediaController {
                 String body = HttpUtil.readBody(exchange);
                 MediaRequest req = JsonUtil.MAPPER.readValue(body, MediaRequest.class);
 
-                // Service checkt z.B. ownership (nur creator darf updaten)
                 Media updated = mediaService.update(userId, mediaId, req);
                 HttpUtil.sendJson(exchange, 200, toMediaJson(updated));
                 return;
             }
 
             if (method.equals("DELETE")) {
-                // Service checkt ownership (nur creator darf löschen)
                 mediaService.delete(userId, mediaId);
                 HttpUtil.sendEmpty(exchange, 204);
                 return;
@@ -104,30 +136,20 @@ public class MediaController {
             HttpUtil.sendEmpty(exchange, 405);
 
         } catch (ApiException e) {
-            // geplante Fehler (400/401/403/404/...)
             HttpUtil.sendJson(exchange, e.getStatus(), Map.of("message", e.getMessage()));
         } catch (Exception e) {
-            // ungeplante Fehler
             HttpUtil.sendJson(exchange, 500, Map.of("message", "Internal Server Error"));
         }
     }
 
-    /**
-     * POST /api/media
-     * Liest JSON Body, baut MediaRequest und ruft Service für Create auf.
-     */
     private void handleCreate(HttpExchange exchange, int userId) throws IOException {
         String body = HttpUtil.readBody(exchange);
         MediaRequest req = JsonUtil.MAPPER.readValue(body, MediaRequest.class);
 
-        // creatorId kommt aus dem Token (userId)
         Media created = mediaService.create(userId, req);
         HttpUtil.sendJson(exchange, 201, toMediaJson(created));
     }
 
-    /**
-     * GET /api/media
-     */
     private void handleList(HttpExchange exchange) throws IOException {
         Map<String, String> q = QueryUtil.parse(exchange.getRequestURI().getQuery());
 
@@ -159,10 +181,6 @@ public class MediaController {
         try { return Double.parseDouble(s); } catch (Exception e) { return null; }
     }
 
-    /**
-     * Baut ein "API-Response JSON" aus einem Media-Objekt.
-     * (Wir schicken hier bewusst nur Felder, die für die API relevant sind.)
-     */
     private Map<String, Object> toMediaJson(Media m) {
         return Map.of(
                 "id", m.getId(),
