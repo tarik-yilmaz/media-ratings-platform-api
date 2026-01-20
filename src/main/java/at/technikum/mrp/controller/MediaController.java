@@ -87,6 +87,52 @@ public class MediaController {
                 return;
             }
 
+            // Spezialfall: /api/media/{id}/ratings
+            if (parts.length == 5 && "ratings".equals(parts[4])) {
+                int mediaId;
+                try {
+                    mediaId = Integer.parseInt(parts[3]);
+                } catch (NumberFormatException ex) {
+                    throw ApiException.badRequest("mediaId muss eine Zahl sein");
+                }
+
+                if (!method.equals("GET")) {
+                    HttpUtil.sendEmpty(exchange, 405);
+                    return;
+                }
+
+                // 404 wenn Media nicht existiert (für saubere API)
+                mediaService.getById(mediaId);
+
+                List<Rating> ratings = ratingService.listByMediaId(mediaId);
+
+                // Kommentar-Regel:
+                // - öffentlich nur wenn confirmed == true
+                // - der Autor selbst sieht seinen Kommentar immer (auch unconfirmed)
+                List<Map<String, Object>> out = new ArrayList<>();
+                for (Rating r : ratings) {
+                    String commentOut = null;
+                    if (Boolean.TRUE.equals(r.getConfirmed()) || r.getUserId().equals(userId)) {
+                        commentOut = r.getComment();
+                    }
+
+                    out.add(Map.of(
+                            "id", r.getId(),
+                            "mediaId", r.getMediaId(),
+                            "userId", r.getUserId(),
+                            "stars", r.getStars(),
+                            "comment", commentOut,
+                            "confirmed", r.getConfirmed(),
+                            "likesCount", r.getLikesCount(),
+                            "createdAt", r.getCreatedAt()
+                    ));
+                }
+
+                HttpUtil.sendJson(exchange, 200, out);
+                return;
+            }
+
+
             // Normalfall: /api/media oder /api/media/{id}
             boolean hasId = parts.length == 4;
 
