@@ -118,11 +118,6 @@ public class RatingService {
         Rating existing = ratingRepository.findById(ratingId)
                 .orElseThrow(() -> ApiException.notFound("Rating nicht gefunden"));
 
-        // Spezifikation: "like other users' ratings"
-        if (existing.getUserId().equals(userId)) {
-            throw ApiException.forbidden("Du kannst dein eigenes Rating nicht liken");
-        }
-
         boolean ok = ratingRepository.addLike(ratingId, userId);
         if (!ok) {
             throw ApiException.conflict("Du hast dieses Rating bereits geliked");
@@ -130,10 +125,6 @@ public class RatingService {
 
         return ratingRepository.findById(ratingId)
                 .orElseThrow(() -> ApiException.notFound("Rating nicht gefunden"));
-    }
-
-    public List<Rating> listByMediaId(int mediaId) {
-        return ratingRepository.findByMediaId(mediaId);
     }
 
     private void validate(RatingRequest req) {
@@ -144,10 +135,13 @@ public class RatingService {
         // comment ist optional
     }
 
+    public List<Rating> listByMediaId(int mediaId) {
+        return ratingRepository.findByMediaId(mediaId);
+    }
+
     public List<Rating> listByUserId(int userId) {
         return ratingRepository.findByUserId(userId);
     }
-
 
     private void afterRatingChanged(int userId, int mediaId) {
         mediaRepository.updateAverageScore(mediaId);
