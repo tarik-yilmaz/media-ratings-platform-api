@@ -18,7 +18,14 @@ import java.util.concurrent.Executors;
 public class MrpHttpServer {
     private final HttpServer server;
 
-    public MrpHttpServer(int port, AuthController authController, MediaController mediaController, RatingController ratingController, FavoritesController favoritesController) throws IOException {
+    public MrpHttpServer(
+            int port,
+            AuthController authController,
+            MediaController mediaController,
+            RatingController ratingController,
+            FavoritesController favoritesController
+    ) throws IOException {
+
         // Bindet auf den Port (localhost:port)
         this.server = HttpServer.create(new InetSocketAddress(port), 0);
 
@@ -32,7 +39,7 @@ public class MrpHttpServer {
 
 
         server.createContext("/api/ratings", ratingController::handle);
-
+        server.createContext("/api/ratings", ratingController::handle);
         server.createContext("/api/users/favorites", favoritesController::handle);
 
         // Einfacher Threadpool, damit Requests parallel verarbeitet werden können
