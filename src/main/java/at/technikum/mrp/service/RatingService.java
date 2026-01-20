@@ -132,6 +132,10 @@ public class RatingService {
                 .orElseThrow(() -> ApiException.notFound("Rating nicht gefunden"));
     }
 
+    public List<Rating> listByMediaId(int mediaId) {
+        return ratingRepository.findByMediaId(mediaId);
+    }
+
     private void validate(RatingRequest req) {
         if (req == null) throw ApiException.badRequest("Body fehlt");
         if (req.getStars() == null || req.getStars() < 1 || req.getStars() > 5) {
