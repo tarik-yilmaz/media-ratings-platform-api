@@ -211,6 +211,22 @@ public class RatingRepository {
         }
     }
 
+    public boolean incrementLikes(int ratingId) {
+        String sql = "UPDATE ratings SET likes_count = likes_count + 1 WHERE id = ?";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, ratingId);
+            int rows = stmt.executeUpdate();
+            return rows > 0;
+
+        } catch (SQLException e) {
+            System.err.println("Fehler beim Liken des Ratings: " + e.getMessage());
+            return false;
+        }
+    }
+
     /**
      * Fügt einen Like für ein Rating hinzu (max. 1 Like pro User pro Rating).
      * Gibt true zurück, wenn der Like neu war. false, wenn der User schon geliked hat.
