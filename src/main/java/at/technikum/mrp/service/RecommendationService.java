@@ -147,20 +147,20 @@ public class RecommendationService {
     }
 
     private Map<String, Object> mediaToJsonWithScore(Media m, int score, String reason) {
-        Map<String, Object> out = new LinkedHashMap<>();
-        out.put("id", m.getId());
-        out.put("title", m.getTitle());
-        out.put("description", m.getDescription());
-        out.put("mediaType", m.getType());
-        out.put("releaseYear", m.getReleaseYear());
-        out.put("genres", m.getGenres());
-        out.put("ageRestriction", m.getAgeRestriction());
-        out.put("creatorId", m.getCreatorId());
-        out.put("averageScore", m.getAverageScore());
-        out.put("createdAt", m.getCreatedAt());
-        out.put("recommendationScore", score);
-        out.put("reason", reason);
-        return out;
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", m.getId());
+        map.put("title", m.getTitle());
+        map.put("description", m.getDescription());
+        map.put("mediaType", m.getType());
+        map.put("releaseYear", m.getReleaseYear());
+        map.put("genres", m.getGenres());
+        map.put("ageRestriction", m.getAgeRestriction());
+        map.put("creatorId", m.getCreatorId());
+        map.put("averageScore", m.getAverageScore());
+        map.put("createdAt", m.getCreatedAt());
+        map.put("recommendationScore", score);
+        map.put("reason", reason);
+        return map;
     }
 
     private static class ScoredMedia {
