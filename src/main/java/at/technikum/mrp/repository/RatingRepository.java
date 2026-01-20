@@ -212,49 +212,6 @@ public class RatingRepository {
     }
 
     /**
-     * Fügt einen Like für ein Rating hinzu (max. 1 Like pro User pro Rating).
-     * Gibt true zurück, wenn der Like neu war. false, wenn der User schon geliked hat.
-     */
-    public boolean addLike(int ratingId, int userId) {
-        String insert = "INSERT INTO rating_likes (rating_id, user_id) VALUES (?, ?) " +
-                "ON CONFLICT (rating_id, user_id) DO NOTHING";
-        String update = "UPDATE ratings SET likes_count = likes_count + 1 WHERE id = ?";
-
-        Connection conn = null;
-        try {
-            conn = DatabaseConfig.getConnection();
-            conn.setAutoCommit(false);
-
-            try (PreparedStatement ins = conn.prepareStatement(insert)) {
-                ins.setInt(1, ratingId);
-                ins.setInt(2, userId);
-
-                int inserted = ins.executeUpdate();
-                if (inserted == 0) {
-                    conn.rollback(); // Like war schon vorhanden
-                    return false;
-                }
-            }
-
-            try (PreparedStatement upd = conn.prepareStatement(update)) {
-                upd.setInt(1, ratingId);
-                upd.executeUpdate();
-            }
-
-            conn.commit();
-            return true;
-
-        } catch (SQLException e) {
-            try { if (conn != null) conn.rollback(); } catch (SQLException ignored) {}
-            System.err.println("Fehler beim Liken des Ratings: " + e.getMessage());
-            return false;
-        } finally {
-            try { if (conn != null) conn.setAutoCommit(true); } catch (SQLException ignored) {}
-            try { if (conn != null) conn.close(); } catch (SQLException ignored) {}
-        }
-    }
-
-    /**
      * Liked ein Rating genau 1x pro User.
      * - legt einen Eintrag in rating_likes an (UNIQUE verhindert Doppel-Likes)
      * - erhöht likes_count im ratings Datensatz
