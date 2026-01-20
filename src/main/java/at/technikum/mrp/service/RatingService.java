@@ -144,6 +144,11 @@ public class RatingService {
         // comment ist optional
     }
 
+    public List<Rating> listByUserId(int userId) {
+        return ratingRepository.findByUserId(userId);
+    }
+
+
     private void afterRatingChanged(int userId, int mediaId) {
         mediaRepository.updateAverageScore(mediaId);
         userRepository.updateUserStatistics(userId);
