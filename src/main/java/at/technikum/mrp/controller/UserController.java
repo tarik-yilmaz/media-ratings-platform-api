@@ -8,9 +8,11 @@ import at.technikum.mrp.repository.UserRepository;
 import at.technikum.mrp.service.MediaService;
 import at.technikum.mrp.service.RatingService;
 import at.technikum.mrp.service.TokenService;
+import at.technikum.mrp.service.RecommendationService;
 import at.technikum.mrp.util.ApiException;
 import at.technikum.mrp.util.HttpUtil;
 import at.technikum.mrp.util.JsonUtil;
+import at.technikum.mrp.util.QueryUtil;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.io.IOException;
@@ -20,8 +22,9 @@ import java.util.Map;
 
 /**
  * User-Endpunkte (spec-nah):
- * - GET/PUT /api/users/{username}/profile  (Profil ansehen/ändern)
- * - GET     /api/users/{username}/ratings  (eigene Rating-History)
+ * - GET/PUT /api/users/{username}/profile          (Profil ansehen/ändern)
+ * - GET     /api/users/{username}/ratings          (eigene Rating-History)
+ * - GET     /api/users/{username}/recommendations  (Empfehlungen, optional ?limit=10)
  *
  * Zugriff nur auf das eigene Profil -> Username aus URL muss zum Token passen.
  */
@@ -31,15 +34,18 @@ public class UserController {
     private final UserRepository userRepository;
     private final RatingService ratingService;
     private final MediaService mediaService;
+    private final RecommendationService recommendationService;
 
     public UserController(TokenService tokenService,
                           UserRepository userRepository,
                           RatingService ratingService,
-                          MediaService mediaService) {
+                          MediaService mediaService,
+                          RecommendationService recommendationService) {
         this.tokenService = tokenService;
         this.userRepository = userRepository;
         this.ratingService = ratingService;
         this.mediaService = mediaService;
+        this.recommendationService = recommendationService;
     }
 
     public void handle(HttpExchange exchange) throws IOException {
@@ -51,7 +57,7 @@ public class UserController {
             String path = exchange.getRequestURI().getPath();   // z.B. /api/users/alice/profile
             String method = exchange.getRequestMethod().toUpperCase();
 
-            String[] parts = path.split("/"); // ["", "api", "users", "{username}", "profile|ratings"]
+            String[] parts = path.split("/"); // ["", "api", "users", "{username}", "profile|ratings|recommendations"]
 
             // Wir erwarten: /api/users/{username}/{action}
             if (parts.length != 5) {
@@ -72,6 +78,28 @@ public class UserController {
 
             if ("profile".equals(action)) {
                 handleProfile(exchange, method, user);
+                return;
+            }
+
+            if ("recommendations".equals(action)) {
+                if (!method.equals("GET")) {
+                    HttpUtil.sendEmpty(exchange, 405);
+                    return;
+                }
+
+                // optional: ?limit=10
+                int limit = 10;
+                try {
+                    String q = exchange.getRequestURI().getQuery();
+                    if (q != null) {
+                        Map<String, String> params = QueryUtil.parse(q);
+                        String s = params.get("limit");
+                        if (s != null) limit = Integer.parseInt(s);
+                    }
+                } catch (Exception ignored) {}
+
+                List<Map<String, Object>> recs = recommendationService.recommendForUser(user.getId(), limit);
+                HttpUtil.sendJson(exchange, 200, recs);
                 return;
             }
 
