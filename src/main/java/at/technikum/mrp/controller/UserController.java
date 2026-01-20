@@ -5,10 +5,7 @@ import at.technikum.mrp.model.Media;
 import at.technikum.mrp.model.Rating;
 import at.technikum.mrp.model.User;
 import at.technikum.mrp.repository.UserRepository;
-import at.technikum.mrp.service.MediaService;
-import at.technikum.mrp.service.RatingService;
-import at.technikum.mrp.service.TokenService;
-import at.technikum.mrp.service.RecommendationService;
+import at.technikum.mrp.service.*;
 import at.technikum.mrp.util.ApiException;
 import at.technikum.mrp.util.HttpUtil;
 import at.technikum.mrp.util.JsonUtil;
@@ -35,17 +32,20 @@ public class UserController {
     private final RatingService ratingService;
     private final MediaService mediaService;
     private final RecommendationService recommendationService;
+    private final FavoritesService favoritesService;
 
     public UserController(TokenService tokenService,
                           UserRepository userRepository,
                           RatingService ratingService,
                           MediaService mediaService,
-                          RecommendationService recommendationService) {
+                          RecommendationService recommendationService,
+                          FavoritesService favoritesService) {
         this.tokenService = tokenService;
         this.userRepository = userRepository;
         this.ratingService = ratingService;
         this.mediaService = mediaService;
         this.recommendationService = recommendationService;
+        this.favoritesService = favoritesService;
     }
 
     public void handle(HttpExchange exchange) throws IOException {
@@ -111,6 +111,17 @@ public class UserController {
                 handleRatingHistory(exchange, user.getId());
                 return;
             }
+
+            if ("favorites".equals(action)) {
+                if (!method.equals("GET")) {
+                    HttpUtil.sendEmpty(exchange, 405);
+                    return;
+                }
+                List<Media> favs = favoritesService.listFavorites(user.getId());
+                HttpUtil.sendJson(exchange, 200, favs);
+                return;
+            }
+
 
             HttpUtil.sendEmpty(exchange, 404);
 
