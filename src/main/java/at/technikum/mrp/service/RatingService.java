@@ -7,6 +7,8 @@ import at.technikum.mrp.repository.RatingRepository;
 import at.technikum.mrp.repository.UserRepository;
 import at.technikum.mrp.util.ApiException;
 
+import java.util.List;
+
 /**
  * Business-Logik rund um Ratings.
  * Macht Validierung, Ownership-Checks und triggert Updates von Statistiken (Average Scores).
@@ -123,6 +125,11 @@ public class RatingService {
         return ratingRepository.findById(ratingId)
                 .orElseThrow(() -> ApiException.notFound("Rating nicht gefunden"));
     }
+
+    public List<Rating> listByMediaId(int mediaId) {
+        return ratingRepository.findByMediaId(mediaId);
+    }
+
 
     private void validate(RatingRequest req) {
         if (req == null) throw ApiException.badRequest("Body fehlt");
