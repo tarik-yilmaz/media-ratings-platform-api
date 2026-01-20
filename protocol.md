@@ -1,185 +1,302 @@
 # Project Protocol
-This protocol is for the semester project for the Java course 'SWEN1' (Software Engineering 1) 
-for the winter semester 2025 at the University of Applied Sciences FH Technikum Vienna.
+
+This protocol documents the semester project Media Ratings Platform (MRP) for the Java course SWEN1 (Software Engineering 1) in Winter Semester 2025 at FH Technikum Wien.
+
+The project is a standalone RESTful HTTP server (no Spring/ASP.NET) that provides an API for frontends (frontend not part of this project).
+Persistence is implemented with PostgreSQL (Docker) and JDBC.
 
 # Usage
-## Start
+
+## Start database (Docker)
+
+```plaintext
 docker compose up -d
+```
+
+if your compose file is not in the repository root:
+
+```plaintext
+docker compose -f ./docker/docker-compose.yml up -d
+```
 
 ## Check status
+
+```plaintext
 docker compose ps
+```
 
 ## Check logs
-docker compose logs -f
 
-## Stop (stop container, hold data)
+```plaintext
+docker compose logs -f
+```
+
+## Stop (stop container, keep data)
+
+```plaintext
 docker compose down
+```
 
 ## Reset (stop container, delete DB, initialize new schema)
+```plaintext
 docker compose down -v
 docker compose up -d
+```
+
+# Manual API testing with Postman
+
+Postman Collection: **MRP_Postman_Collection.json**
+
+**Authentication flow**
+**1. Register**
+- `POST /api/users/register` 
+- Body: `{ "username": "...", "password": "..." }`
+**2. Login**
+- `POST /api/users/login` 
+- Body: `{ "username": "...", "password": "..." }`
+- Response: token string
+**3. Use token for all protected endpoints**
+- Header:
+  - `Authorization: Bearer <token>`
+
+# Implemnted API endpoints (overview)
+
+## Auth (public)
+- `POST /api/users/register`
+- `POST /api/users/login`
+
+## Media (protected)
+- `GET /api/media` (search/filter/sort)
+- `POST /api/media` (create)
+- `GET /api/media/{id}` (details)
+- `PUT /api/media/{id}` (update, only creator)
+- `DELETE /api/media/{id}` (delete, only creator)
+- `POST /api/media/{id}/rate` (create rating for media)
+- `GET /api/media/{id}/ratings` (list ratings with comment-visibility rule)
+- `POST /api/media/{id}/favorite` (mark favorite)
+- `DELETE /api/media/{id}/favorite` (unmark favorite)`
+
+## Ratings (protected)
+- `PUT /api/ratings/{id}` (update, only owner)
+- `DELETE /api/ratings/{id}` (delete, only owner)
+- `POST /api/ratings/{id}/confirm` (confirm own comment)
+- `POST /api/ratings/{id}/like` (like other users ratings, max 1 like)
+
+## User (protected, only self)
+- `GET /api/users/{username}/profile`
+- `PUT /api/users/{username/profile` (update email)
+- `GET /api/users{username}/ratings` (own rating history)
+- `GET /api/users/{username}/recommendations?limit=10`
+
+## Leaderboard (public)
+- `GET /api/leaderboard?limit=10`
 
 
-## Test Postman (MRP_Postman_Collection.json)
-1. Auth -> Register User:
-POST /api/users/register
+## 1) Description of technical steps and architecture decisions
 
-2. Auth -> Login User:
-POST POST /api/users/login
+## Major implementation steps
 
-3. Use Token (Authorization Header) to access other endpoints:
-For all Media Requests:
-- Key: Authorization
-- Value: Bearer <token>
+**Project setup**
+- Maven project created in IntelliJ IDEA
+- Java 17 configured (maven-compiler-plugin + surefire)
 
-4. Media -> Create Media Entry:
-POST /api/media
-GET /api/media/{id}
-Expected: 200
+**Database setup**
+- PostgreSQL started via Docker Compose
+- Schema initialization via `schema.sql` (tables + constraints + indexes)
 
-5. Media -> Update Media Entry:
-PUT /api/media/{id}
-Expected: 200
-Media -> Delete Media Entry:
-DELETE /api/media/{id}
-Expected: 204
+**HTTP server setup**
+- Java built-in `com.sun.net.httpserver.HttpServer`
+- Central route registration in `MrpHttpServer`
+- Thread pool via `Executors.newFixedThreadPool(16)`
 
+**Configuration**
+- `application.properties` for server and database configuration
+- `DatabaseConfig` for JDBC connection handling
+- `ServerConfig` for port and BCrypt settings
 
-## 1) Description of technical steps and architecture
-Following steps were taken to setup the project:
-1. Setup of the project
-2. PostgreSQL database setup
-3. Http server setup
-4. User-Interface setup and registration (without tokens?)
-5. login & token generation
-6. Media-entity & CRUD
-7. Implementations of Ratings logic
-5. Search & Filter
-6. User Profile & Stats
-7. Recommendations
-8. Unit tests
-9. Postman collection for manual API testing
+**Core domain & persistence**
+- Models: `User`, `Media`, `Rating` implemented via Builder Pattern
+- Repositories: pure JDBC repositories for SQL access and mapping (`ResultSet -> model`)
 
-### Steps done:
+**Authentication**
+- Password hashing with BCrypt
+- Token issuance via `TokenService`
+- Bearer token required for all endpoints except register/login
+- Token maps to `userId` and is checked on each request
 
-- Setup repository, cloned it, created project in IntelliJ IDEA and added Maven.
-- Added README.md and protocol.md.
-- Downloaded and installed Docker Desktop and pulled postgres image.
-- Created docker compose setup for PostgreSQL and connected it to the project.
-- Implemented schema initialization via schema.sql (tables + indexes).
-- Added configuration loading via application.properties.
-- Implemented JDBC repositories for users, media, ratings.
-- Implemented basic auth flow:
-- register user (password hashing)
-- login user (token returned)
-- Implemented Media CRUD endpoints and protected them via Bearer token.
+**Media management**
+- CRUD endpoints for media entries
+- Ownership rule: only `creatorId` may update/delete
 
-## Architecure overview (packages/layers)
-The project is implemented without a framework.
+**Rating system**
+- Create rating (1–5 stars, optional comment)
+- One rating per user per media enforced by DB unique constraint (`media_id`, `user_id`)
+- Comment moderation: comment is only public after confirmation by author
+- Like system: max 1 like per user per rating, stored in `rating_likes`
 
-**config:**
-Reads application.properties
-Provides DB connection (DatabaseConfig) and server settings (ServerConfig)
+**Favorites**
+- Favorite/unfavorite via `favorites` table with uniqueness (`user_id`, `media_id`)
+- List favorites via `/api/users/favorites` endpoint
 
-**dto:**
-Request objects for JSON input (RegisterRequest, LoginRequest, MediaRequest etc.)
+**Search / Filter / Sort**
+- Server-side filtering in SQL (`MediaRepository.findFiltered`)
+- Allowed filters: title partial match, genre match, mediaType, releaseYear, ageRestriction, minRating
+- Allowed sort: title, year, score (whitelisted to avoid SQL injection)
 
-**model:**
-Domain objects (User, Media, Rating) implemented using Builder Pattern
+**User profile & statistics**
+- Profile endpoint includes statistics fields: `total_ratings`, `average_rating`
+- Denormalized statistics updated after rating changes:
+    - `media.average_score` recalculated from ratings
+    - `users.total_ratings` and `users.average_rating` recalculated from ratings
 
-**repository:**
-Database access layer (JDBC + SQL)
-Responsible for CRUD operations and mapping ResultSet -> model objects
+**Recommendations**
+- Simple scoring-based approach:
+    - Use previously highly rated media (>= 4 stars)
+    - Candidate set: media not rated by user
+    - Score based on favorite genre + content similarity (type, age restriction, genre overlap)
+    - Fallback: top rated media if user has no “liked” ratings
 
-**service:**
+**Manual integration testing**
+- Postman collection to demonstrate relevant endpoints and flows
 
+**Unit tests**
+- JUnit 5 test setup
+- Test plan for >= 20 unit tests (core business logic)
 
-**Business logic layer (e.g. user registration rules, token validation rules, ownership checks):**
+---
 
+## Architecture overview (packages/layers)
 
-**controller + server startup (HTTP layer):**
-Receives HTTP requests
-Parses JSON using Jackson
-Validates Authorization header (Bearer token)
-Returns JSON responses + correct HTTP status codes
+**config**
+- Reads settings from `application.properties`
+- `DatabaseConfig`: JDBC connection creation and config validation
+- `ServerConfig`: server port and BCrypt rounds
 
-**Why this structure:**
+**dto**
+- Request DTOs for JSON input  
+  (e.g. `RegisterRequest`, `LoginRequest`, `MediaRequest`, `RatingRequest`, `UserProfileUpdate`)
 
-Controller stays focused on HTTP (request/response).
+**model**
+- Domain models (`User`, `Media`, `Rating`)
+- Builder Pattern for readable object construction
 
-Repository stays focused on SQL (no business decisions).
+**repository**
+- Pure JDBC/SQL layer (no HTTP, no business rules)
+- CRUD operations + mapping of DB rows to models
+- Examples: `UserRepository`, `MediaRepository`, `RatingRepository`, `FavoritesRepository`
 
-Business logic is kept in the service layer (better readability + testability).
+**service**
+- Business logic and rules from specification:
+    - input validation (stars range, required fields)
+    - ownership checks (creator/owner restrictions)
+    - moderation logic (confirm comment)
+    - like uniqueness (1 like per rating/user)
+    - recalculation of denormalized statistics
 
-## 2) Explanation of unit test coverage and why specific logic was tested
+**controller**
+- HTTP layer:
+    - parses request path + method
+    - reads body JSON via Jackson
+    - requires Bearer token (except auth endpoints)
+    - maps exceptions to correct HTTP status codes
+    - returns JSON + correct codes via `HttpUtil`
 
-- Current test coverage is basic and focuses on configuration sanity checks:
-- Server port is valid (1..65535)
-- DB URL exists and contains postgresql
-- BCrypt rounds are at least 10
+**server**
+- `MrpHttpServer`: route registration and thread pool configuration
 
-Reason:
-- Without correct config the whole application cannot run.
-- These tests detect typical setup mistakes early (wrong properties, wrong port, missing DB URL)
+---
 
-Planned unit tests for later phases:
-- AuthService (register, login) including password hashing and wrong password cases
-- TokenService (token format, expiration, invalid token)
-- MediaService (validation + ownership checks)
-- Repository integration tests (optional)
+## Why this structure
+- Controller stays focused on request/response only.
+- Repository stays focused on SQL only.
+- Services keep business logic centralized and testable.
 
-## 3) Notes on problems encountered and how they were solved
+---
+
+# 2) Unit test coverage and why specific logic was tested
+
+## Current implemented tests
+**ConfigTest (sanity checks)**
+- Server port is in valid range
+- DB URL exists and targets PostgreSQL
+- BCrypt rounds are not too low
+
+## Why these tests matter
+- Without correct configuration the server cannot start.
+- These tests catch typical setup mistakes early (wrong port, missing DB URL, weak BCrypt settings).
+
+## Planned unit tests (core business logic, >= 20)
+The test plan focuses on the **service layer**, because it contains the real specification rules and is testable without HTTP:
+
+- **AuthServiceTest**: validation, duplicate username, hashing, login success/failure
+- **MediaServiceTest**: validation, ownership checks, repository failure handling
+- **RatingServiceTest**: stars validation, duplicate rating conflict, ownership, confirm moderation, like rules
+- **FavoritesServiceTest**: media existence, duplicate favorites, remove not found
+- **RecommendationServiceTest**: fallback behavior, limit behavior, scoring preference checks
+
+This coverage ensures that:
+- specification rules (ownership, moderation, 1-like rule, 1-rating rule) are verified
+- major error cases return expected exceptions (mapped to 4xx/5xx by controllers)
+
+# 3) Problems encountered and how they were solved
 
 **Docker compose not found**
-
-Problem:
-Running `docker compose up -d` in project root failed with: `no configuration file provided: not found`
-
-Cause:
-The compose file is located in docker/docker-compose.yml, not in the root directory.
-
-Fix:
-`docker compose -f .\docker\docker-compose.yml up -d`
+**Problem**: `docker compose up -d` failed with `no configuration file provided: not found`
+**Cause**: compose file was not in project root
+**Fix**: use explicit file path
+```plaintext
+docker compose -f ./docker/docker-compose.yml up -d
+```
 
 **Java version mismatch (switch arrow syntax)**
-
-Problem:
-Compilation error about switch rules not supported in Java 11.
-
-Cause:
-Arrow switch syntax needs newer Java.
-
-Fix:
-Updated Maven compiler to Java 17.
+**Problem**: compilation errors when using `case "x" -> ...`
+**Cause**: arrow switch requires newer Java than 11
+**Fix**: Maven compiler set to Java 17
 
 **`return` inside static initializer**
+**Problem**: `return` outside of method in `static{}` block
+**Cause**: Java does not allow return in static init blocks
+**Fix**: refactored to if/else flow without return
 
-Problem:
-`java`: Rückgabe außerhalb von Methode in `DatabaseConfig`.
+**LocalDateTime JSON serialization**
+**Problem**: Jackson could not serialize/deserialize `LocalDateTime`
+**Fix**: added dependency `jackson-datatype-jsr310` and registered module in `JsonUtil`
 
-Cause:
-`return` is not allowed inside `static{}` blocks.
+**Like rule and DB consistency**
+**Problem**: preventing double likes reliably
+**Fix**: added `rating_likes` table with UNIQUE `(rating_id, user_id)` + transaction that inserts like-row and 
+increments `likes_count` in one unit
 
-Fix:
-Replaced early return with if-else logic (no return).
+**Repository/service mismatches during development**
+**Problem**: missing methods or naming mismatches (e.g. `incrementLikes`)
+**Fix**: aligned service logic with repository method `likeRating(...)` and kept repository as single source of truth
+for like handling
 
-**LocalDateTime JSON support**
+- - - 
 
-Problem:
-`LocalDateTime` needs Jackson JavaTimeModule.
+# 4) Estimated time tracking for each major part of the project
+- Project setup (repo, IntelliJ, Maven): ~ 3h
+- Docker/Postgres setup + schema init: ~ 6h
+- Config setup (properties, DatabaseConfig, ServerConfig): ~ 6-7h
+- Repository layer (User/Media/Rating/Favorites): ~ 12h
+- Auth flow (register, login, token): ~ 8h
+- Media endpoints (CRUD, auth protected): ~ 7h
+- Rating system (create/update/delete/confirm/like): ~ 9h
+- Favorites + user profile/history: ~ 5h
+- Recommendations: ~ 5h
+- Postman testing + fixes: ~ 3h
+- Unit tests (setup + implementation planned): 10h
+- Protocol writing + cleanup: ~ 4h
 
-Fix:
-Added dependency to `jackson-datatype-jsr310`.
+- - - 
 
+# Notes on documentation and submission
+- Git history is used as development trace
+- Submission includes:
+  - Source code (zip)
+  - README with GitHub link
+  - Postman collection
+  - This protocol document
 
-## 4) Estimated time tracking for each major part of the project
-
-- Project setup (repo, IntelliJ, Maven ): ca. 2h
-- Docker/Postgres setup + schema init: ca. 4h
-- Config setup (properties, DatabaseConfig, ServerConfig): ca. 4h
-- Repository layer (User/Media/Rating): ca. 5h
-- Auth flow (register, login + hashing + token): ca. 5h
-- Media enpoints (CRUD + auth protected): ca. 5h
-- Postman testing + fixes: ca. 3h
-- Unit test setup: ca. 3h
+- - -
 
