@@ -6,6 +6,7 @@ import at.technikum.mrp.model.User;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -115,6 +116,67 @@ public class UserRepository {
             return false;
         }
     }
+
+    /**
+     * Updatet die Email eines Users
+     * Email darf auch null sein (dann wird sie gelöscht).
+     */
+    public boolean updateEmail(int userId, String email) {
+        String sql = "UPDATE users SET email = ? WHERE id = ?";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            if (email == null || email.isBlank()) {
+                stmt.setNull(1, Types.VARCHAR);
+            } else {
+                stmt.setString(1, email.trim());
+            }
+            stmt.setInt(2, userId);
+
+            int rows = stmt.executeUpdate();
+            return rows > 0;
+
+        } catch (SQLException e) {
+            System.err.println("Fehler beim Update der Email: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Public Leaderboard: User mit den meisten Ratings (Top N).
+     */
+    public List<Map<String, Object>> findLeaderboard(int limit) {
+        List<Map<String, Object>> out = new ArrayList<>();
+
+        String sql =
+                "SELECT username, total_ratings, average_rating " +
+                        "FROM users " +
+                        "ORDER BY total_ratings DESC, average_rating DESC, username ASC " +
+                        "LIMIT ?";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, limit);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    out.add(Map.of(
+                            "username", rs.getString("username"),
+                            "totalRatings", rs.getInt("total_ratings"),
+                            "averageRating", rs.getDouble("average_rating")
+                    ));
+                }
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Fehler beim Laden des Leaderboards: " + e.getMessage());
+        }
+
+        return out;
+    }
+
 
     /**
      * Löscht einen User per ID.
