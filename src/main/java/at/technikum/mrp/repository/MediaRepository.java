@@ -227,15 +227,18 @@ public class MediaRepository {
      * Hier passiert die "Übersetzung" DB-Spaltennamen -> Java-Felder.
      */
     private Media mapResultSetToMedia(ResultSet rs) throws SQLException {
+        Integer releaseYear = (Integer) rs.getObject("release_year");
+        Integer ageRestriction = (Integer) rs.getObject("age_restriction");
+
         return Media.builder()
                 .id(rs.getInt("id"))
                 .title(rs.getString("title"))
                 .description(rs.getString("description"))
                 .type(rs.getString("media_type"))
-                .releaseYear(rs.getInt("release_year"))
+                .releaseYear(releaseYear)
                 .genres(stringToGenres(rs.getString("genres")))
-                .ageRestriction(rs.getInt("age_restriction"))
-                .creatorId(rs.getInt("creator_id"))
+                .ageRestriction(ageRestriction)
+                .creatorId((Integer) rs.getObject("creator_id")) // sicherer als getInt()
                 .averageScore(rs.getDouble("average_score"))
                 .createdAt(rs.getTimestamp("created_at").toLocalDateTime())
                 .build();
@@ -258,7 +261,14 @@ public class MediaRepository {
         if (genresString == null || genresString.trim().isEmpty()) {
             return new ArrayList<>();
         }
-        return Arrays.asList(genresString.split(","));
+
+        String[] parts = genresString.split(",");
+        List<String> out = new ArrayList<>();
+        for (String p : parts) {
+            String g = p.trim();
+            if (!g.isEmpty()) out.add(g);
+        }
+        return out;
     }
 
     /**
@@ -332,4 +342,86 @@ public class MediaRepository {
 
         return mediaList;
     }
+
+    public List<Media> findHighlyRatedByUser(int userId, int minStars) {
+        List<Media> out = new ArrayList<>();
+
+        String sql =
+                "SELECT m.* " +
+                        "FROM ratings r " +
+                        "JOIN media m ON m.id = r.media_id " +
+                        "WHERE r.user_id = ? AND r.stars >= ? " +
+                        "ORDER BY r.stars DESC, m.created_at DESC";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, userId);
+            stmt.setInt(2, minStars);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    out.add(mapResultSetToMedia(rs));
+                }
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Fehler beim Laden der hoch bewerteten Media: " + e.getMessage());
+        }
+
+        return out;
+    }
+
+    public List<Media> findNotRatedByUser(int userId) {
+        List<Media> out = new ArrayList<>();
+
+        String sql =
+                "SELECT * FROM media " +
+                        "WHERE id NOT IN (SELECT media_id FROM ratings WHERE user_id = ?) " +
+                        "ORDER BY created_at DESC";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, userId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    out.add(mapResultSetToMedia(rs));
+                }
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Fehler beim Laden nicht bewerteter Media: " + e.getMessage());
+        }
+
+        return out;
+    }
+
+    public List<Media> findTopRated(int limit) {
+        List<Media> out = new ArrayList<>();
+
+        String sql =
+                "SELECT * FROM media " +
+                        "ORDER BY average_score DESC, created_at DESC, title ASC " +
+                        "LIMIT ?";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, limit);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    out.add(mapResultSetToMedia(rs));
+                }
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Fehler beim Laden Top-Rated Media: " + e.getMessage());
+        }
+
+        return out;
+    }
+
 }
