@@ -4,6 +4,7 @@ import at.technikum.mrp.dto.MediaRequest;
 import at.technikum.mrp.dto.RatingRequest;
 import at.technikum.mrp.model.Media;
 import at.technikum.mrp.model.Rating;
+import at.technikum.mrp.service.FavoritesService;
 import at.technikum.mrp.service.MediaService;
 import at.technikum.mrp.service.RatingService;
 import at.technikum.mrp.service.TokenService;
@@ -35,11 +36,13 @@ public class MediaController {
     private final MediaService mediaService;
     private final TokenService tokenService;
     private final RatingService ratingService;
+    private final FavoritesService favoritesService;
 
-    public MediaController(MediaService mediaService, TokenService tokenService, RatingService ratingService) {
+    public MediaController(MediaService mediaService, TokenService tokenService, RatingService ratingService, FavoritesService favoritesService) {
         this.mediaService = mediaService;
         this.tokenService = tokenService;
         this.ratingService = ratingService;
+        this.favoritesService = favoritesService;
     }
 
     public void handle(HttpExchange exchange) throws IOException {
@@ -129,6 +132,31 @@ public class MediaController {
                 }
 
                 HttpUtil.sendJson(exchange, 200, out);
+                return;
+            }
+
+            // Spezialfall: /api/media/{id}/favorite
+            if (parts.length == 5 && "favorite".equals(parts[4])) {
+                int mediaId;
+                try {
+                    mediaId = Integer.parseInt(parts[3]);
+                } catch (NumberFormatException ex) {
+                    throw ApiException.badRequest("mediaId muss eine Zahl sein");
+                }
+
+                if (method.equals("POST")) {
+                    favoritesService.addFavorite(userId, mediaId);
+                    HttpUtil.sendJson(exchange, 201, Map.of("message", "Favorit hinzugefügt"));
+                    return;
+                }
+
+                if (method.equals("DELETE")) {
+                    favoritesService.removeFavorite(userId, mediaId);
+                    HttpUtil.sendEmpty(exchange, 204);
+                    return;
+                }
+
+                HttpUtil.sendEmpty(exchange, 405);
                 return;
             }
 
