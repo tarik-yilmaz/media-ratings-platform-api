@@ -115,21 +115,22 @@ public class RatingService {
     }
 
     public Rating likeRating(int userId, int ratingId) {
-        // userId wird nur genutzt um sicherzustellen: Request ist authentifiziert
-        ratingRepository.findById(ratingId)
+        Rating existing = ratingRepository.findById(ratingId)
                 .orElseThrow(() -> ApiException.notFound("Rating nicht gefunden"));
 
-        boolean ok = ratingRepository.incrementLikes(ratingId);
-        if (!ok) throw new ApiException(500, "Like fehlgeschlagen");
+        // Spezifikation: "like other users' ratings"
+        if (existing.getUserId().equals(userId)) {
+            throw ApiException.forbidden("Du kannst dein eigenes Rating nicht liken");
+        }
+
+        boolean ok = ratingRepository.addLike(ratingId, userId);
+        if (!ok) {
+            throw ApiException.conflict("Du hast dieses Rating bereits geliked");
+        }
 
         return ratingRepository.findById(ratingId)
                 .orElseThrow(() -> ApiException.notFound("Rating nicht gefunden"));
     }
-
-    public List<Rating> listByMediaId(int mediaId) {
-        return ratingRepository.findByMediaId(mediaId);
-    }
-
 
     private void validate(RatingRequest req) {
         if (req == null) throw ApiException.badRequest("Body fehlt");
