@@ -118,7 +118,12 @@ public class RatingService {
         Rating existing = ratingRepository.findById(ratingId)
                 .orElseThrow(() -> ApiException.notFound("Rating nicht gefunden"));
 
-        boolean ok = ratingRepository.addLike(ratingId, userId);
+        // Optional aber spec-nah: nicht eigenes Rating liken
+        if (existing.getUserId().equals(userId)) {
+            throw ApiException.forbidden("Du kannst dein eigenes Rating nicht liken");
+        }
+
+        boolean ok = ratingRepository.likeRating(ratingId, userId);
         if (!ok) {
             throw ApiException.conflict("Du hast dieses Rating bereits geliked");
         }
@@ -126,6 +131,7 @@ public class RatingService {
         return ratingRepository.findById(ratingId)
                 .orElseThrow(() -> ApiException.notFound("Rating nicht gefunden"));
     }
+
 
     private void validate(RatingRequest req) {
         if (req == null) throw ApiException.badRequest("Body fehlt");
