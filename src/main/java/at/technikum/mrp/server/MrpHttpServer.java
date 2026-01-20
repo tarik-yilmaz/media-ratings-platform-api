@@ -2,12 +2,11 @@ package at.technikum.mrp.server;
 
 import at.technikum.mrp.controller.AuthController;
 import at.technikum.mrp.controller.FavoritesController;
+import at.technikum.mrp.controller.LeaderboardController;
 import at.technikum.mrp.controller.MediaController;
 import at.technikum.mrp.controller.RatingController;
-import at.technikum.mrp.model.User;
-import com.sun.net.httpserver.HttpServer;
 import at.technikum.mrp.controller.UserController;
-import at.technikum.mrp.controller.LeaderboardController;
+import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -31,40 +30,36 @@ public class MrpHttpServer {
             LeaderboardController leaderboardController
     ) throws IOException {
 
-        // Bindet auf den Port (localhost:port)
         this.server = HttpServer.create(new InetSocketAddress(port), 0);
 
-        // Auth-Endpunkte
+        // Auth
         server.createContext("/api/users/register", authController::handleRegister);
         server.createContext("/api/users/login", authController::handleLogin);
 
-        // Media-Endpunkte: ein Context für /api/media und alles darunter
-        // Controller unterscheidet dann /api/media vs /api/media/{id}
+        // Media (inkl. /api/media/{id}, /rate, /ratings, /favorite über Controller-Parsing)
         server.createContext("/api/media", mediaController::handle);
 
+        // Ratings
+        server.createContext("/api/ratings", ratingController::handle);
 
-        server.createContext("/api/ratings", ratingController::handle);
-        server.createContext("/api/ratings", ratingController::handle);
+        // Favorites list (GET /api/users/favorites)
         server.createContext("/api/users/favorites", favoritesController::handle);
 
-        server.createContext("/api/users", userController::handle);      // /api/users/{username}/profile, /ratings
+        // User profile, history, recommendations (GET/PUT /api/users/{username}/profile etc.)
+        server.createContext("/api/users", userController::handle);
+
+        // Leaderboard
         server.createContext("/api/leaderboard", leaderboardController::handle);
 
-        // Einfacher Threadpool, damit Requests parallel verarbeitet werden können
+        // Threadpool
         server.setExecutor(Executors.newFixedThreadPool(16));
     }
 
-    /**
-     * Startet den HTTP Server.
-     */
     public void start() {
         server.start();
         System.out.println("✓ HTTP Server läuft");
     }
 
-    /**
-     * Stoppt den Server (delaySeconds = Zeit zum "auslaufen lassen" von Requests).
-     */
     public void stop(int delaySeconds) {
         server.stop(delaySeconds);
     }
