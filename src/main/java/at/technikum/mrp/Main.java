@@ -40,7 +40,7 @@ public class Main {
         MediaController mediaController = new MediaController(mediaService, tokenService, ratingService, favoritesService);
         RatingController ratingController = new RatingController(ratingService, tokenService);
         FavoritesController favoritesController = new FavoritesController(favoritesService, tokenService);
-        UserController userController = new UserController(tokenService, userRepository, ratingService, mediaService, recommendationService);
+        UserController userController = new UserController(tokenService, userRepository, ratingService, mediaService, recommendationService, favoritesService);
         LeaderboardController leaderboardController = new LeaderboardController(userRepository);
 
         // Server
