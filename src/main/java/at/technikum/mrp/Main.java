@@ -26,22 +26,24 @@ public class Main {
         RatingRepository ratingRepository = new RatingRepository();
         FavoritesRepository favoritesRepository = new FavoritesRepository();
 
-// Services
+        // Services
         TokenService tokenService = new TokenService();
         AuthService authService = new AuthService(userRepository, tokenService);
         MediaService mediaService = new MediaService(mediaRepository);
         RatingService ratingService = new RatingService(ratingRepository, mediaRepository, userRepository);
         FavoritesService favoritesService = new FavoritesService(favoritesRepository, mediaRepository);
+        RecommendationService recommendationService = new RecommendationService(mediaRepository, ratingRepository);
 
-// Controller
+
+        // Controller
         AuthController authController = new AuthController(authService);
         MediaController mediaController = new MediaController(mediaService, tokenService, ratingService, favoritesService);
         RatingController ratingController = new RatingController(ratingService, tokenService);
         FavoritesController favoritesController = new FavoritesController(favoritesService, tokenService);
-        UserController userController = new UserController(tokenService, userRepository, ratingService, mediaService);
+        UserController userController = new UserController(tokenService, userRepository, ratingService, mediaService, recommendationService);
         LeaderboardController leaderboardController = new LeaderboardController(userRepository);
 
-// Server
+        // Server
         MrpHttpServer server = new MrpHttpServer(
                 ServerConfig.getPort(),
                 authController,
@@ -53,7 +55,6 @@ public class Main {
         );
 
         server.start();
-
 
         System.out.println("Base URL: http://localhost:" + ServerConfig.getPort() + "/api");
     }
