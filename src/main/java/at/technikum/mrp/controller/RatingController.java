@@ -13,8 +13,15 @@ import java.io.IOException;
 import java.util.Map;
 
 /**
- * Controller für Ratings
- * Kümmert sich um Update/Delete sowie /like und /confirm.
+ * HTTP-Controller für Rating-Endpoints unter /api/ratings
+ *
+ * Unterstützt:
+ * - PUT    /api/ratings/{id}          (Rating updaten)
+ * - DELETE /api/ratings/{id}          (Rating löschen)
+ * - POST   /api/ratings/{id}/confirm  (Kommentar bestätigen)
+ * - POST   /api/ratings/{id}/like     (Rating liken)
+ *
+ * Alles ist geschützt -> Authorization: Bearer <token>
  */
 public class RatingController {
 
@@ -28,66 +35,92 @@ public class RatingController {
 
     public void handle(HttpExchange exchange) throws IOException {
         try {
+            // 1) Auth
             int userId = tokenService.requireUserIdFromAuthHeader(
                     exchange.getRequestHeaders().getFirst("Authorization")
             );
 
-            String path = exchange.getRequestURI().getPath();
-            if (path.endsWith("/")) path = path.substring(0, path.length() - 1);
+            // 2) Pfad normalisieren (Trailing Slash entfernen)
+            String path = exchange.getRequestURI().getPath(); // z.B. /api/ratings/123/confirm
+            if (path.endsWith("/")) {
+                path = path.substring(0, path.length() - 1);
+            }
 
             String method = exchange.getRequestMethod().toUpperCase();
-            String[] parts = path.split("/"); // ["", "api", "ratings", "{id}", "like|confirm"]
+            String[] parts = path.split("/"); // ["", "api", "ratings", "{id}", "confirm?"]
 
+            // Erwartet mindestens /api/ratings/{id}
             if (parts.length < 4) {
                 HttpUtil.sendEmpty(exchange, 404);
                 return;
             }
 
+            // /api/ratings/{id}
             int ratingId;
             try {
                 ratingId = Integer.parseInt(parts[3]);
-            } catch (NumberFormatException ex) {
+            } catch (NumberFormatException e) {
                 throw ApiException.badRequest("ratingId muss eine Zahl sein");
             }
 
-            // /api/ratings/{id}
-            if (parts.length == 4) {
-                if (method.equals("PUT")) {
-                    String body = HttpUtil.readBody(exchange);
-                    RatingRequest req = JsonUtil.MAPPER.readValue(body, RatingRequest.class);
+            // 3) Subroutes: /confirm und /like
+            if (parts.length == 5) {
+                String action = parts[4];
 
-                    Rating updated = ratingService.updateRating(userId, ratingId, req);
+                if ("confirm".equals(action)) {
+                    if (!method.equals("POST")) {
+                        HttpUtil.sendEmpty(exchange, 405);
+                        return;
+                    }
+
+                    Rating updated = ratingService.confirmComment(userId, ratingId);
                     HttpUtil.sendJson(exchange, 200, toRatingJson(updated));
                     return;
                 }
 
-                if (method.equals("DELETE")) {
-                    ratingService.deleteRating(userId, ratingId);
-                    HttpUtil.sendEmpty(exchange, 204);
+                if ("like".equals(action)) {
+                    if (!method.equals("POST")) {
+                        HttpUtil.sendEmpty(exchange, 405);
+                        return;
+                    }
+
+                    Rating updated = ratingService.likeRating(userId, ratingId);
+                    HttpUtil.sendJson(exchange, 200, Map.of(
+                            "ratingId", updated.getId(),
+                            "likesCount", updated.getLikesCount()
+                    ));
                     return;
                 }
 
-                HttpUtil.sendEmpty(exchange, 405);
+                // unbekannte Subroute
+                HttpUtil.sendEmpty(exchange, 404);
                 return;
             }
 
-            // /api/ratings/{id}/like oder /confirm
-            if (parts.length == 5) {
-                String action = parts[4];
-
-                if (method.equals("POST") && action.equals("like")) {
-                    Rating liked = ratingService.likeRating(userId, ratingId);
-                    HttpUtil.sendJson(exchange, 200, toRatingJson(liked));
-                    return;
-                }
-
-                if (method.equals("POST") && action.equals("confirm")) {
-                    Rating confirmed = ratingService.confirmComment(userId, ratingId);
-                    HttpUtil.sendJson(exchange, 200, toRatingJson(confirmed));
-                    return;
-                }
+            // 4) Nur exakt /api/ratings/{id} erlauben
+            if (parts.length != 4) {
+                HttpUtil.sendEmpty(exchange, 404);
+                return;
             }
 
+            // PUT /api/ratings/{id}
+            if (method.equals("PUT")) {
+                String body = HttpUtil.readBody(exchange);
+                RatingRequest req = JsonUtil.MAPPER.readValue(body, RatingRequest.class);
+
+                Rating updated = ratingService.updateRating(userId, ratingId, req);
+                HttpUtil.sendJson(exchange, 200, toRatingJson(updated));
+                return;
+            }
+
+            // DELETE /api/ratings/{id}
+            if (method.equals("DELETE")) {
+                ratingService.deleteRating(userId, ratingId);
+                HttpUtil.sendEmpty(exchange, 204);
+                return;
+            }
+
+            // alles andere: nicht erlaubt
             HttpUtil.sendEmpty(exchange, 405);
 
         } catch (ApiException e) {
