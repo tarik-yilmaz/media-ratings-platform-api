@@ -212,20 +212,48 @@ public class RatingRepository {
     }
 
     /**
-     * Erhöht likes_count um 1 (Like).
+     * Fügt einen Like für ein Rating hinzu (max. 1 Like pro User pro Rating).
+     * Gibt true zurück, wenn der Like neu war. false, wenn der User schon geliked hat.
      */
-    public boolean incrementLikes(Integer ratingId) {
-        String sql = "UPDATE ratings SET likes_count = likes_count + 1 WHERE id = ?";
+    public boolean addLike(int ratingId, int userId) {
+        String insertLikeSql =
+                "INSERT INTO rating_likes (rating_id, user_id) VALUES (?, ?) " +
+                        "ON CONFLICT (rating_id, user_id) DO NOTHING";
 
-        try (Connection conn = DatabaseConfig.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        String incCountSql =
+                "UPDATE ratings SET likes_count = likes_count + 1 WHERE id = ?";
 
-            stmt.setInt(1, ratingId);
-            int rows = stmt.executeUpdate();
-            return rows > 0;
+        try (Connection conn = DatabaseConfig.getConnection()) {
+            conn.setAutoCommit(false);
+
+            int inserted;
+            try (PreparedStatement ins = conn.prepareStatement(insertLikeSql)) {
+                ins.setInt(1, ratingId);
+                ins.setInt(2, userId);
+                inserted = ins.executeUpdate();
+            }
+
+            if (inserted == 0) {
+                conn.rollback();
+                return false;
+            }
+
+            int updated;
+            try (PreparedStatement upd = conn.prepareStatement(incCountSql)) {
+                upd.setInt(1, ratingId);
+                updated = upd.executeUpdate();
+            }
+
+            if (updated == 0) {
+                conn.rollback(); // sollte nicht passieren, aber sicher ist sicher
+                return false;
+            }
+
+            conn.commit();
+            return true;
 
         } catch (SQLException e) {
-            System.err.println("Fehler beim Liken des Ratings: " + e.getMessage());
+            System.err.println("Fehler beim Liken eines Ratings: " + e.getMessage());
             return false;
         }
     }
